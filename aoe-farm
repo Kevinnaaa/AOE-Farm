@@ -1,6 +1,6 @@
 --[[
-    Sailor Piece - AOE AUTO FARM
-    Hits ALL enemies within range
+    Sailor Piece - AOE AUTO FARM + ISLAND TRAVEL
+    Hits ALL enemies within range + Safe island teleport
     Close with TERMINATE button
 --]]
 
@@ -13,13 +13,21 @@ local Farming = false
 local ScriptActive = true
 local Range = 30 -- Studs
 
+-- Island Data
+local Islands = {
+    ["Starter Island (Sea 2)"] = "StarterIsland_Sea2",
+    ["Bizarre Island"] = "BizarreIsland",
+    ["Punch Island"] = "PunchIsland",
+    ["World Island"] = "WorldIsland"
+}
+
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AOEFarm"
 ScreenGui.Parent = game:GetService("CoreGui")
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 220, 0, 160)
+Frame.Size = UDim2.new(0, 240, 0, 240)
 Frame.Position = UDim2.new(0, 10, 0, 10)
 Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Frame.BorderSizePixel = 0
@@ -27,17 +35,19 @@ Frame.Active = true
 Frame.Draggable = true
 Frame.Parent = ScreenGui
 
+-- Title
 local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 25)
 Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "⚔️ AOE Auto Farm"
+Title.Text = "⚔️ AOE Farm + Travel"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 14
 Title.Parent = Frame
 
+-- Status
 local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -10, 0, 25)
+Status.Size = UDim2.new(1, -10, 0, 20)
 Status.Position = UDim2.new(0, 5, 0, 30)
 Status.BackgroundTransparency = 1
 Status.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -47,9 +57,65 @@ Status.Font = Enum.Font.SourceSans
 Status.TextSize = 12
 Status.Parent = Frame
 
+-- Island Label
+local IslandLabel = Instance.new("TextLabel")
+IslandLabel.Size = UDim2.new(1, -10, 0, 20)
+IslandLabel.Position = UDim2.new(0, 5, 0, 52)
+IslandLabel.BackgroundTransparency = 1
+IslandLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+IslandLabel.Text = "📍 Travel to Island:"
+IslandLabel.TextXAlignment = Enum.TextXAlignment.Left
+IslandLabel.Font = Enum.Font.SourceSans
+IslandLabel.TextSize = 11
+IslandLabel.Parent = Frame
+
+-- Island Buttons
+local yPos = 72
+for displayName, islandName in pairs(Islands) do
+    local Btn = Instance.new("TextButton")
+    Btn.Size = UDim2.new(1, -10, 0, 25)
+    Btn.Position = UDim2.new(0, 5, 0, yPos)
+    Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Btn.Text = displayName
+    Btn.Font = Enum.Font.SourceSans
+    Btn.TextSize = 12
+    Btn.Parent = Frame
+    
+    Btn.MouseButton1Click:Connect(function()
+        local char = LocalPlayer.Character
+        if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
+            local island = Workspace:FindFirstChild(islandName)
+            if island then
+                local targetPart = island:FindFirstChildWhichIsA("BasePart")
+                if targetPart then
+                    Status.Text = "Traveling to " .. displayName .. "..."
+                    -- Safe speed travel (not teleport)
+                    local oldSpeed = char.Humanoid.WalkSpeed
+                    char.Humanoid.WalkSpeed = 250
+                    char.Humanoid:MoveTo(targetPart.Position)
+                    task.delay(2, function()
+                        if char and char:FindFirstChild("Humanoid") then
+                            char.Humanoid.WalkSpeed = oldSpeed
+                            Status.Text = "Arrived at " .. displayName
+                        end
+                    end)
+                else
+                    Status.Text = "Island not found!"
+                end
+            else
+                Status.Text = "Island not loaded!"
+            end
+        end
+    end)
+    
+    yPos = yPos + 28
+end
+
+-- Start/Stop Button
 local ToggleBtn = Instance.new("TextButton")
 ToggleBtn.Size = UDim2.new(1, -10, 0, 35)
-ToggleBtn.Position = UDim2.new(0, 5, 0, 60)
+ToggleBtn.Position = UDim2.new(0, 5, 0, yPos + 5)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.Text = "▶ START FARMING"
@@ -57,20 +123,22 @@ ToggleBtn.Font = Enum.Font.SourceSansBold
 ToggleBtn.TextSize = 14
 ToggleBtn.Parent = Frame
 
-local RangeLabel = Instance.new("TextLabel")
-RangeLabel.Size = UDim2.new(1, -10, 0, 20)
-RangeLabel.Position = UDim2.new(0, 5, 0, 100)
-RangeLabel.BackgroundTransparency = 1
-RangeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-RangeLabel.Text = "Range: 30 studs"
-RangeLabel.TextXAlignment = Enum.TextXAlignment.Left
-RangeLabel.Font = Enum.Font.SourceSans
-RangeLabel.TextSize = 12
-RangeLabel.Parent = Frame
+-- Info
+local InfoLabel = Instance.new("TextLabel")
+InfoLabel.Size = UDim2.new(1, -10, 0, 20)
+InfoLabel.Position = UDim2.new(0, 5, 0, yPos + 42)
+InfoLabel.BackgroundTransparency = 1
+InfoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+InfoLabel.Text = "Range: " .. Range .. " studs"
+InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
+InfoLabel.Font = Enum.Font.SourceSans
+InfoLabel.TextSize = 11
+InfoLabel.Parent = Frame
 
+-- Terminate Button
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Size = UDim2.new(1, -10, 0, 25)
-CloseBtn.Position = UDim2.new(0, 5, 0, 130)
+CloseBtn.Position = UDim2.new(0, 5, 0, yPos + 64)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.Text = "⏏ TERMINATE"
@@ -125,7 +193,6 @@ local function getNPCsInRange()
         end
     end
     
-    -- Sort by closest
     table.sort(nearby, function(a, b) return a.dist < b.dist end)
     return nearby
 end
@@ -146,16 +213,13 @@ task.spawn(function()
                 if #npcs > 0 then
                     Status.Text = "Hitting " .. #npcs .. " enemies"
                     
-                    -- Rapidly attack each NPC in range
                     for _, npc in pairs(npcs) do
                         local npcRoot = npc.root
                         local myRoot = char:FindFirstChild("HumanoidRootPart")
                         
                         if myRoot then
-                            -- Face the NPC
                             myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(npcRoot.Position.X, myRoot.Position.Y, npcRoot.Position.Z))
                             
-                            -- Click to attack
                             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
                             task.wait(0.03)
                             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
@@ -170,5 +234,4 @@ task.spawn(function()
     end
 end)
 
-print("AOE Auto Farm Ready!")
-print("Hits all enemies within", Range, "studs")
+print("AOE Farm + Island Travel Ready!")
