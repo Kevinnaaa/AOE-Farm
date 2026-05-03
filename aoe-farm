@@ -1,6 +1,6 @@
 --[[
     Sailor Piece - ALL IN ONE (Clean UI)
-    AOE Farm + Anti AFK | Speed: 50
+    AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
     Close with TERMINATE button
 --]]
 
@@ -14,6 +14,8 @@ local ScriptActive = true
 local AntiAFKEnabled = true
 local Range = 30
 local WalkSpeed = 50
+local JumpPower = 75
+local FOV = 100
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -61,10 +63,10 @@ Status.Size = UDim2.new(1, -20, 0, 22)
 Status.Position = UDim2.new(0, 10, 0, 35)
 Status.BackgroundTransparency = 1
 Status.TextColor3 = Color3.fromRGB(180, 180, 180)
-Status.Text = "● Ready | Speed: " .. WalkSpeed
+Status.Text = "● Ready | S:50 J:75 FOV:100"
 Status.TextXAlignment = Enum.TextXAlignment.Left
 Status.Font = Enum.Font.SourceSans
-Status.TextSize = 12
+Status.TextSize = 11
 Status.Parent = Frame
 
 -- Divider
@@ -122,12 +124,12 @@ ToggleBtn.MouseButton1Click:Connect(function()
     if Farming then
         ToggleBtn.Text = "STOP FARMING"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 25, 25)
-        Status.Text = "● Farming | Speed: " .. WalkSpeed
+        Status.Text = "● Farming | S:50 J:75 FOV:100"
         Status.TextColor3 = Color3.fromRGB(255, 100, 100)
     else
         ToggleBtn.Text = "START FARMING"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
-        Status.Text = "● Ready | Speed: " .. WalkSpeed
+        Status.Text = "● Ready | S:50 J:75 FOV:100"
         Status.TextColor3 = Color3.fromRGB(180, 180, 180)
     end
 end)
@@ -149,12 +151,25 @@ CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
 end)
 
--- Keep speed at 50 permanently
+-- Keep stats applied permanently
 task.spawn(function()
     while ScriptActive do
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = WalkSpeed
-        end
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char then
+                -- Speed
+                local humanoid = char:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid.WalkSpeed = WalkSpeed
+                    humanoid.JumpPower = JumpPower
+                end
+            end
+            -- FOV
+            local camera = workspace.CurrentCamera
+            if camera then
+                camera.FieldOfView = FOV
+            end
+        end)
         task.wait(0.5)
     end
 end)
@@ -234,4 +249,4 @@ task.spawn(function()
     end
 end)
 
-print("All In One Ready! Speed: 50 | Farm + Anti AFK")
+print("All In One Ready! Speed:50 | Jump:75 | FOV:100 | Farm + Anti AFK")
