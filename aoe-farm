@@ -1,0 +1,174 @@
+--[[
+    Sailor Piece - AOE AUTO FARM
+    Hits ALL enemies within range
+    Close with TERMINATE button
+--]]
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+local Farming = false
+local ScriptActive = true
+local Range = 30 -- Studs
+
+-- GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AOEFarm"
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 220, 0, 160)
+Frame.Position = UDim2.new(0, 10, 0, 10)
+Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 25)
+Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Text = "⚔️ AOE Auto Farm"
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 14
+Title.Parent = Frame
+
+local Status = Instance.new("TextLabel")
+Status.Size = UDim2.new(1, -10, 0, 25)
+Status.Position = UDim2.new(0, 5, 0, 30)
+Status.BackgroundTransparency = 1
+Status.TextColor3 = Color3.fromRGB(0, 255, 0)
+Status.Text = "Status: Ready"
+Status.TextXAlignment = Enum.TextXAlignment.Left
+Status.Font = Enum.Font.SourceSans
+Status.TextSize = 12
+Status.Parent = Frame
+
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(1, -10, 0, 35)
+ToggleBtn.Position = UDim2.new(0, 5, 0, 60)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.Text = "▶ START FARMING"
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.TextSize = 14
+ToggleBtn.Parent = Frame
+
+local RangeLabel = Instance.new("TextLabel")
+RangeLabel.Size = UDim2.new(1, -10, 0, 20)
+RangeLabel.Position = UDim2.new(0, 5, 0, 100)
+RangeLabel.BackgroundTransparency = 1
+RangeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+RangeLabel.Text = "Range: 30 studs"
+RangeLabel.TextXAlignment = Enum.TextXAlignment.Left
+RangeLabel.Font = Enum.Font.SourceSans
+RangeLabel.TextSize = 12
+RangeLabel.Parent = Frame
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(1, -10, 0, 25)
+CloseBtn.Position = UDim2.new(0, 5, 0, 130)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseBtn.Text = "⏏ TERMINATE"
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.TextSize = 13
+CloseBtn.Parent = Frame
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    Farming = not Farming
+    if Farming then
+        ToggleBtn.Text = "⏹ STOP FARMING"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+        Status.Text = "Status: Farming..."
+    else
+        ToggleBtn.Text = "▶ START FARMING"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
+        Status.Text = "Status: Stopped"
+    end
+end)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ScriptActive = false
+    Farming = false
+    ScreenGui:Destroy()
+    print("Script terminated!")
+end)
+
+-- Get all NPCs in range
+local function getNPCsInRange()
+    local char = LocalPlayer.Character
+    if not char then return {} end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return {} end
+    
+    local nearby = {}
+    local npcFolder = Workspace:FindFirstChild("NPCs")
+    
+    if npcFolder then
+        for _, obj in pairs(npcFolder:GetChildren()) do
+            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") then
+                local humanoid = obj.Humanoid
+                if humanoid.Health > 0 then
+                    local npcRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
+                    if npcRoot then
+                        local dist = (root.Position - npcRoot.Position).Magnitude
+                        if dist <= Range then
+                            table.insert(nearby, {model = obj, root = npcRoot, dist = dist})
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Sort by closest
+    table.sort(nearby, function(a, b) return a.dist < b.dist end)
+    return nearby
+end
+
+-- AOE Farming loop
+task.spawn(function()
+    while ScriptActive do
+        if Farming then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if not char then
+                    task.wait(0.5)
+                    return
+                end
+                
+                local npcs = getNPCsInRange()
+                
+                if #npcs > 0 then
+                    Status.Text = "Hitting " .. #npcs .. " enemies"
+                    
+                    -- Rapidly attack each NPC in range
+                    for _, npc in pairs(npcs) do
+                        local npcRoot = npc.root
+                        local myRoot = char:FindFirstChild("HumanoidRootPart")
+                        
+                        if myRoot then
+                            -- Face the NPC
+                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(npcRoot.Position.X, myRoot.Position.Y, npcRoot.Position.Z))
+                            
+                            -- Click to attack
+                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                            task.wait(0.03)
+                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                        end
+                    end
+                else
+                    Status.Text = "No enemies in range"
+                end
+            end)
+        end
+        task.wait(0.1)
+    end
+end)
+
+print("AOE Auto Farm Ready!")
+print("Hits all enemies within", Range, "studs")
