@@ -1,6 +1,7 @@
 --[[
     Sailor Piece - AOE AUTO FARM + ISLAND TRAVEL
-    Hits ALL enemies within range + Safe island teleport
+    Hits ALL enemies within range + Island speed-travel
+    Matches your exact island names
     Close with TERMINATE button
 --]]
 
@@ -13,12 +14,24 @@ local Farming = false
 local ScriptActive = true
 local Range = 30 -- Studs
 
--- Island Data
+-- Island Data (matching YOUR game)
 local Islands = {
-    ["Starter Island (Sea 2)"] = "StarterIsland_Sea2",
-    ["Bizarre Island"] = "BizarreIsland",
-    ["Punch Island"] = "PunchIsland",
-    ["World Island"] = "WorldIsland"
+    ["Starter Island Sea 2"] = {
+        name = "StarterIsland_Sea2",
+        desc = "Begin your new journey"
+    },
+    ["Bizarre Island"] = {
+        name = "BizarreIsland",
+        desc = "Where reality bends and twists"
+    },
+    ["Punch Island"] = {
+        name = "PunchIsland",
+        desc = "Where fists decide everything"
+    },
+    ["World Island Sea 2"] = {
+        name = "WorldIsland",
+        desc = "The gateway between seas"
+    }
 }
 
 -- GUI
@@ -27,7 +40,7 @@ ScreenGui.Name = "AOEFarm"
 ScreenGui.Parent = game:GetService("CoreGui")
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 240, 0, 240)
+Frame.Size = UDim2.new(0, 240, 0, 260)
 Frame.Position = UDim2.new(0, 10, 0, 10)
 Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Frame.BorderSizePixel = 0
@@ -57,59 +70,57 @@ Status.Font = Enum.Font.SourceSans
 Status.TextSize = 12
 Status.Parent = Frame
 
--- Island Label
-local IslandLabel = Instance.new("TextLabel")
-IslandLabel.Size = UDim2.new(1, -10, 0, 20)
-IslandLabel.Position = UDim2.new(0, 5, 0, 52)
-IslandLabel.BackgroundTransparency = 1
-IslandLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-IslandLabel.Text = "📍 Travel to Island:"
-IslandLabel.TextXAlignment = Enum.TextXAlignment.Left
-IslandLabel.Font = Enum.Font.SourceSans
-IslandLabel.TextSize = 11
-IslandLabel.Parent = Frame
+-- Island Title
+local IslandTitle = Instance.new("TextLabel")
+IslandTitle.Size = UDim2.new(1, -10, 0, 20)
+IslandTitle.Position = UDim2.new(0, 5, 0, 52)
+IslandTitle.BackgroundTransparency = 1
+IslandTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
+IslandTitle.Text = "📍 Select Island to Travel:"
+IslandTitle.TextXAlignment = Enum.TextXAlignment.Left
+IslandTitle.Font = Enum.Font.SourceSans
+IslandTitle.TextSize = 11
+IslandTitle.Parent = Frame
 
 -- Island Buttons
 local yPos = 72
-for displayName, islandName in pairs(Islands) do
+for displayName, islandData in pairs(Islands) do
     local Btn = Instance.new("TextButton")
-    Btn.Size = UDim2.new(1, -10, 0, 25)
+    Btn.Size = UDim2.new(1, -10, 0, 30)
     Btn.Position = UDim2.new(0, 5, 0, yPos)
-    Btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Btn.Text = displayName
+    Btn.Text = displayName .. "\n" .. islandData.desc
     Btn.Font = Enum.Font.SourceSans
-    Btn.TextSize = 12
+    Btn.TextSize = 11
+    Btn.TextWrapped = true
     Btn.Parent = Frame
     
     Btn.MouseButton1Click:Connect(function()
         local char = LocalPlayer.Character
         if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-            local island = Workspace:FindFirstChild(islandName)
+            local island = Workspace:FindFirstChild(islandData.name)
             if island then
                 local targetPart = island:FindFirstChildWhichIsA("BasePart")
                 if targetPart then
-                    Status.Text = "Traveling to " .. displayName .. "..."
-                    -- Safe speed travel (not teleport)
+                    Status.Text = "🏃 Traveling to " .. displayName .. "..."
                     local oldSpeed = char.Humanoid.WalkSpeed
                     char.Humanoid.WalkSpeed = 250
                     char.Humanoid:MoveTo(targetPart.Position)
-                    task.delay(2, function()
+                    task.delay(3, function()
                         if char and char:FindFirstChild("Humanoid") then
                             char.Humanoid.WalkSpeed = oldSpeed
-                            Status.Text = "Arrived at " .. displayName
+                            Status.Text = "✅ Arrived at " .. displayName
                         end
                     end)
-                else
-                    Status.Text = "Island not found!"
                 end
             else
-                Status.Text = "Island not loaded!"
+                Status.Text = "❌ Island not loaded!"
             end
         end
     end)
     
-    yPos = yPos + 28
+    yPos = yPos + 33
 end
 
 -- Start/Stop Button
@@ -129,10 +140,10 @@ InfoLabel.Size = UDim2.new(1, -10, 0, 20)
 InfoLabel.Position = UDim2.new(0, 5, 0, yPos + 42)
 InfoLabel.BackgroundTransparency = 1
 InfoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-InfoLabel.Text = "Range: " .. Range .. " studs"
+InfoLabel.Text = "🎯 Range: " .. Range .. " studs | Safe speed travel"
 InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
 InfoLabel.Font = Enum.Font.SourceSans
-InfoLabel.TextSize = 11
+InfoLabel.TextSize = 10
 InfoLabel.Parent = Frame
 
 -- Terminate Button
@@ -211,7 +222,7 @@ task.spawn(function()
                 local npcs = getNPCsInRange()
                 
                 if #npcs > 0 then
-                    Status.Text = "Hitting " .. #npcs .. " enemies"
+                    Status.Text = "⚔️ Hitting " .. #npcs .. " enemies"
                     
                     for _, npc in pairs(npcs) do
                         local npcRoot = npc.root
@@ -235,3 +246,4 @@ task.spawn(function()
 end)
 
 print("AOE Farm + Island Travel Ready!")
+print("Islands: Starter Sea 2 | Bizarre | Punch | World Sea 2")
