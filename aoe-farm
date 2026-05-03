@@ -1,6 +1,6 @@
 --[[
-    Sailor Piece - ALL IN ONE (Delta Mobile)
-    AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
+    Sailor Piece - ALL IN ONE (PC + Mobile)
+    AOE Farm + Anti AFK (Both Platforms) + Speed 50 + Jump 75 + FOV 100
     With minimize button
 --]]
 
@@ -8,6 +8,8 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 local Farming = false
 local ScriptActive = true
@@ -17,6 +19,9 @@ local Range = 30
 local WalkSpeed = 50
 local JumpPower = 75
 local FOV = 100
+
+-- Detect platform
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -82,7 +87,7 @@ Status.Size = UDim2.new(1, -10, 0, 20)
 Status.Position = UDim2.new(0, 5, 0, 28)
 Status.BackgroundTransparency = 1
 Status.TextColor3 = Color3.fromRGB(0, 255, 0)
-Status.Text = "Ready | S:50 J:75"
+Status.Text = "Ready | S:50 J:75 | " .. (isMobile and "Mobile" or "PC")
 Status.Font = Enum.Font.SourceSans
 Status.TextSize = 11
 Status.Parent = Frame
@@ -123,16 +128,11 @@ CloseBtn.Parent = Frame
 -- Minimize function
 local function toggleMinimize()
     Minimized = not Minimized
+    Frame.Visible = not Minimized
     if Minimized then
-        Frame.Visible = false
-        MinBtn.Text = "⚔️"
         MinBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
-        MinBtn.Size = UDim2.new(0, 32, 0, 32)
     else
-        Frame.Visible = true
-        MinBtn.Text = "⚔️"
         MinBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-        MinBtn.Size = UDim2.new(0, 32, 0, 32)
     end
 end
 
@@ -150,7 +150,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
     else
         ToggleBtn.Text = "START FARMING"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
-        Status.Text = "Ready | S:50 J:75"
+        Status.Text = "Ready | S:50 J:75 | " .. (isMobile and "Mobile" or "PC")
         Status.TextColor3 = Color3.fromRGB(0, 255, 0)
     end
 end)
@@ -258,24 +258,46 @@ task.spawn(function()
     end
 end)
 
--- Anti AFK loop
+-- =============================================
+-- ANTI AFK - WORKS ON BOTH PC AND MOBILE
+-- =============================================
 task.spawn(function()
     while ScriptActive do
         if AntiAFKEnabled then
             pcall(function()
-                local camera = workspace.CurrentCamera
-                if camera then
-                    camera.CFrame = camera.CFrame * CFrame.Angles(0, 0.02, 0)
-                end
                 local char = LocalPlayer.Character
-                if char and char:FindFirstChild("Humanoid") then
-                    char.Humanoid:Move(Vector3.new(0.1, 0, 0), true)
+                
+                if isMobile then
+                    -- Mobile Anti-AFK: Simulate TOUCH input
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        -- Small rotation (touch equivalent)
+                        local camera = workspace.CurrentCamera
+                        if camera then
+                            camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.5), math.rad(0.5), 0)
+                        end
+                        -- Tiny movement
+                        char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0.1, 0, 0.1)
+                    end
+                    -- Simulate touch press
+                    VirtualInputManager:SendTouchEvent(Vector2.new(100, 100), 0, true, game)
+                    task.wait(0.1)
+                    VirtualInputManager:SendTouchEvent(Vector2.new(100, 100), 0, false, game)
+                else
+                    -- PC Anti-AFK: Camera + movement
+                    local camera = workspace.CurrentCamera
+                    if camera then
+                        camera.CFrame = camera.CFrame * CFrame.Angles(0, 0.02, 0)
+                    end
+                    if char and char:FindFirstChild("Humanoid") then
+                        char.Humanoid:Move(Vector3.new(0.1, 0, 0), true)
+                    end
                 end
             end)
         end
-        task.wait(30)
+        task.wait(25) -- Every 25 seconds
     end
 end)
 
 applyStats()
-print("Sailor Piece Ready! Click ⚔️ or — to minimize")
+print("Sailor Piece Ready! Platform: " .. (isMobile and "Mobile" or "PC"))
+print("Anti AFK: Active for both platforms")
