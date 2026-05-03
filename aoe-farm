@@ -1,6 +1,6 @@
 --[[
     Sailor Piece - ALL IN ONE (Clean UI)
-    AOE Farm + Anti AFK
+    AOE Farm + Anti AFK | Speed: 50
     Close with TERMINATE button
 --]]
 
@@ -13,6 +13,7 @@ local Farming = false
 local ScriptActive = true
 local AntiAFKEnabled = true
 local Range = 30
+local WalkSpeed = 50
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -60,7 +61,7 @@ Status.Size = UDim2.new(1, -20, 0, 22)
 Status.Position = UDim2.new(0, 10, 0, 35)
 Status.BackgroundTransparency = 1
 Status.TextColor3 = Color3.fromRGB(180, 180, 180)
-Status.Text = "● Ready"
+Status.Text = "● Ready | Speed: " .. WalkSpeed
 Status.TextXAlignment = Enum.TextXAlignment.Left
 Status.Font = Enum.Font.SourceSans
 Status.TextSize = 12
@@ -121,12 +122,12 @@ ToggleBtn.MouseButton1Click:Connect(function()
     if Farming then
         ToggleBtn.Text = "STOP FARMING"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 25, 25)
-        Status.Text = "● Farming | Range: " .. Range
+        Status.Text = "● Farming | Speed: " .. WalkSpeed
         Status.TextColor3 = Color3.fromRGB(255, 100, 100)
     else
         ToggleBtn.Text = "START FARMING"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
-        Status.Text = "● Ready"
+        Status.Text = "● Ready | Speed: " .. WalkSpeed
         Status.TextColor3 = Color3.fromRGB(180, 180, 180)
     end
 end)
@@ -146,6 +147,16 @@ CloseBtn.MouseButton1Click:Connect(function()
     ScriptActive = false
     Farming = false
     ScreenGui:Destroy()
+end)
+
+-- Keep speed at 50 permanently
+task.spawn(function()
+    while ScriptActive do
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+            LocalPlayer.Character.Humanoid.WalkSpeed = WalkSpeed
+        end
+        task.wait(0.5)
+    end
 end)
 
 -- Get NPCs in range
@@ -223,4 +234,4 @@ task.spawn(function()
     end
 end)
 
-print("All In One Ready! Farm + Anti AFK")
+print("All In One Ready! Speed: 50 | Farm + Anti AFK")
