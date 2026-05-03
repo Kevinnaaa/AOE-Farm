@@ -1,6 +1,6 @@
 --[[
-    Sailor Piece - ALL IN ONE
-    AOE Farm + Island Dropdown + Anti AFK
+    Sailor Piece - ALL IN ONE (Clean UI)
+    AOE Farm + Anti AFK + x2 DMG
     Close with TERMINATE button
 --]]
 
@@ -8,20 +8,14 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Farming = false
 local ScriptActive = true
 local AntiAFKEnabled = true
+local DmgEnabled = false
 local Range = 30
-local SelectedIsland = ""
-
--- Island Data
-local Islands = {
-    ["Starter Island Sea 2"] = {name = "StarterIsland_Sea2", desc = "Begin your new journey"},
-    ["Bizarre Island"] = {name = "BizarreIsland", desc = "Where reality bends and twists"},
-    ["Punch Island"] = {name = "PunchIsland", desc = "Where fists decide everything"},
-    ["World Island Sea 2"] = {name = "WorldIsland", desc = "The gateway between seas"}
-}
+local DamageMultiplier = 2
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -29,194 +23,151 @@ ScreenGui.Name = "AllInOne"
 ScreenGui.Parent = game:GetService("CoreGui")
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 240, 0, 250)
+Frame.Size = UDim2.new(0, 220, 0, 200)
 Frame.Position = UDim2.new(0, 10, 0, 10)
-Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Frame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Frame.BorderSizePixel = 0
 Frame.Active = true
 Frame.Draggable = true
 Frame.Parent = ScreenGui
 
--- Title
+-- Title Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = Frame
+
 local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, 0, 0, 25)
-Title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Title.Size = UDim2.new(1, 0, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "⚔️ All In One"
+Title.Text = "⚔️  SAILOR PIECE"
+Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 14
-Title.Parent = Frame
+Title.Parent = TitleBar
+
+-- Divider line
+local Div1 = Instance.new("Frame")
+Div1.Size = UDim2.new(1, 0, 0, 1)
+Div1.Position = UDim2.new(0, 0, 0, 30)
+Div1.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+Div1.BorderSizePixel = 0
+Div1.Parent = Frame
 
 -- Status
 local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -10, 0, 20)
-Status.Position = UDim2.new(0, 5, 0, 30)
+Status.Size = UDim2.new(1, -20, 0, 22)
+Status.Position = UDim2.new(0, 10, 0, 35)
 Status.BackgroundTransparency = 1
-Status.TextColor3 = Color3.fromRGB(0, 255, 0)
-Status.Text = "Ready | AFK: ON | Range: " .. Range
+Status.TextColor3 = Color3.fromRGB(180, 180, 180)
+Status.Text = "● Ready"
 Status.TextXAlignment = Enum.TextXAlignment.Left
 Status.Font = Enum.Font.SourceSans
-Status.TextSize = 11
+Status.TextSize = 12
 Status.Parent = Frame
 
--- Dropdown Label
-local DropLabel = Instance.new("TextLabel")
-DropLabel.Size = UDim2.new(1, -10, 0, 18)
-DropLabel.Position = UDim2.new(0, 5, 0, 52)
-DropLabel.BackgroundTransparency = 1
-DropLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
-DropLabel.Text = "📍 Select Island:"
-DropLabel.TextXAlignment = Enum.TextXAlignment.Left
-DropLabel.Font = Enum.Font.SourceSans
-DropLabel.TextSize = 11
-DropLabel.Parent = Frame
+-- Divider
+local Div2 = Instance.new("Frame")
+Div2.Size = UDim2.new(1, 0, 0, 1)
+Div2.Position = UDim2.new(0, 0, 0, 60)
+Div2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Div2.BorderSizePixel = 0
+Div2.Parent = Frame
 
--- Dropdown Button
-local DropBtn = Instance.new("TextButton")
-DropBtn.Size = UDim2.new(1, -10, 0, 28)
-DropBtn.Position = UDim2.new(0, 5, 0, 70)
-DropBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-DropBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-DropBtn.Text = "▼ Choose Island"
-DropBtn.Font = Enum.Font.SourceSans
-DropBtn.TextSize = 13
-DropBtn.Parent = Frame
+-- Section: Farm
+local FarmLabel = Instance.new("TextLabel")
+FarmLabel.Size = UDim2.new(1, -20, 0, 18)
+FarmLabel.Position = UDim2.new(0, 10, 0, 65)
+FarmLabel.BackgroundTransparency = 1
+FarmLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+FarmLabel.Text = "FARMING"
+FarmLabel.TextXAlignment = Enum.TextXAlignment.Left
+FarmLabel.Font = Enum.Font.SourceSansBold
+FarmLabel.TextSize = 10
+FarmLabel.Parent = Frame
 
--- Dropdown List
-local DropList = Instance.new("ScrollingFrame")
-DropList.Size = UDim2.new(1, -10, 0, 0)
-DropList.Position = UDim2.new(0, 5, 0, 100)
-DropList.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-DropList.BorderSizePixel = 0
-DropList.Visible = false
-DropList.Parent = Frame
-
-local listY = 0
-for displayName, islandData in pairs(Islands) do
-    local Option = Instance.new("TextButton")
-    Option.Size = UDim2.new(1, 0, 0, 28)
-    Option.Position = UDim2.new(0, 0, 0, listY)
-    Option.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    Option.TextColor3 = Color3.fromRGB(255, 255, 255)
-    Option.Text = displayName
-    Option.Font = Enum.Font.SourceSans
-    Option.TextSize = 12
-    Option.Parent = DropList
-    
-    Option.MouseButton1Click:Connect(function()
-        SelectedIsland = displayName
-        DropBtn.Text = "📍 " .. displayName
-        DropList.Visible = false
-    end)
-    
-    listY = listY + 30
-end
-DropList.CanvasSize = UDim2.new(0, 0, 0, listY)
-
-DropBtn.MouseButton1Click:Connect(function()
-    DropList.Visible = not DropList.Visible
-    if DropList.Visible then
-        DropList.Size = UDim2.new(1, -10, 0, listY)
-    else
-        DropList.Size = UDim2.new(1, -10, 0, 0)
-    end
-end)
-
--- Travel Button
-local TravelBtn = Instance.new("TextButton")
-TravelBtn.Size = UDim2.new(1, -10, 0, 25)
-TravelBtn.Position = UDim2.new(0, 5, 0, 103)
-TravelBtn.BackgroundColor3 = Color3.fromRGB(0, 100, 150)
-TravelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-TravelBtn.Text = "🏃 TRAVEL"
-TravelBtn.Font = Enum.Font.SourceSansBold
-TravelBtn.TextSize = 13
-TravelBtn.Parent = Frame
-
-TravelBtn.MouseButton1Click:Connect(function()
-    if SelectedIsland == "" then
-        Status.Text = "Select an island first!"
-        return
-    end
-    
-    local char = LocalPlayer.Character
-    if char and char:FindFirstChild("HumanoidRootPart") and char:FindFirstChild("Humanoid") then
-        local island = Workspace:FindFirstChild(Islands[SelectedIsland].name)
-        if island then
-            local targetPart = island:FindFirstChildWhichIsA("BasePart")
-            if targetPart then
-                Status.Text = "🏃 Traveling..."
-                local oldSpeed = char.Humanoid.WalkSpeed
-                char.Humanoid.WalkSpeed = 250
-                char.Humanoid:MoveTo(targetPart.Position)
-                task.delay(3, function()
-                    if char and char:FindFirstChild("Humanoid") then
-                        char.Humanoid.WalkSpeed = oldSpeed
-                        Status.Text = "✅ Arrived!"
-                    end
-                end)
-            end
-        else
-            Status.Text = "❌ Island not loaded!"
-        end
-    end
-end)
-
--- Start/Stop Farm Button
 local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(1, -10, 0, 30)
-ToggleBtn.Position = UDim2.new(0, 5, 0, 135)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
+ToggleBtn.Size = UDim2.new(1, -20, 0, 30)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 83)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Text = "▶ START FARMING"
+ToggleBtn.Text = "START FARMING"
 ToggleBtn.Font = Enum.Font.SourceSansBold
-ToggleBtn.TextSize = 14
+ToggleBtn.TextSize = 13
 ToggleBtn.Parent = Frame
 
--- Anti AFK Toggle Button
+-- Divider
+local Div3 = Instance.new("Frame")
+Div3.Size = UDim2.new(1, 0, 0, 1)
+Div3.Position = UDim2.new(0, 0, 0, 118)
+Div3.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Div3.BorderSizePixel = 0
+Div3.Parent = Frame
+
+-- Section: Features
+local FeatLabel = Instance.new("TextLabel")
+FeatLabel.Size = UDim2.new(1, -20, 0, 18)
+FeatLabel.Position = UDim2.new(0, 10, 0, 122)
+FeatLabel.BackgroundTransparency = 1
+FeatLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+FeatLabel.Text = "FEATURES"
+FeatLabel.TextXAlignment = Enum.TextXAlignment.Left
+FeatLabel.Font = Enum.Font.SourceSansBold
+FeatLabel.TextSize = 10
+FeatLabel.Parent = Frame
+
+-- Anti AFK
 local AFKBtn = Instance.new("TextButton")
-AFKBtn.Size = UDim2.new(1, -10, 0, 25)
-AFKBtn.Position = UDim2.new(0, 5, 0, 170)
-AFKBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+AFKBtn.Size = UDim2.new(1, -20, 0, 25)
+AFKBtn.Position = UDim2.new(0, 10, 0, 140)
+AFKBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
 AFKBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AFKBtn.Text = "🔄 Anti AFK: ON"
-AFKBtn.Font = Enum.Font.SourceSansBold
-AFKBtn.TextSize = 12
+AFKBtn.Font = Enum.Font.SourceSans
+AFKBtn.TextSize = 11
 AFKBtn.Parent = Frame
+
+-- DMG Toggle
+local DmgBtn = Instance.new("TextButton")
+DmgBtn.Size = UDim2.new(1, -20, 0, 25)
+DmgBtn.Position = UDim2.new(0, 10, 0, 168)
+DmgBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+DmgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DmgBtn.Text = "⚡ DMG x2: OFF"
+DmgBtn.Font = Enum.Font.SourceSans
+DmgBtn.TextSize = 11
+DmgBtn.Parent = Frame
 
 -- Terminate Button
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(1, -10, 0, 25)
-CloseBtn.Position = UDim2.new(0, 5, 0, 200)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
-CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.Text = "⏏ TERMINATE"
+CloseBtn.Size = UDim2.new(1, -20, 0, 22)
+CloseBtn.Position = UDim2.new(0, 10, 0, 198)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
+CloseBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+CloseBtn.Text = "TERMINATE"
 CloseBtn.Font = Enum.Font.SourceSansBold
-CloseBtn.TextSize = 13
+CloseBtn.TextSize = 11
 CloseBtn.Parent = Frame
 
--- Info
-local InfoLabel = Instance.new("TextLabel")
-InfoLabel.Size = UDim2.new(1, -10, 0, 18)
-InfoLabel.Position = UDim2.new(0, 5, 0, 228)
-InfoLabel.BackgroundTransparency = 1
-InfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-InfoLabel.Text = "Farm + Travel + Anti AFK"
-InfoLabel.TextXAlignment = Enum.TextXAlignment.Left
-InfoLabel.Font = Enum.Font.SourceSans
-InfoLabel.TextSize = 10
-InfoLabel.Parent = Frame
+-- Update frame size
+Frame.Size = UDim2.new(0, 220, 0, 228)
 
 -- Button Functions
 ToggleBtn.MouseButton1Click:Connect(function()
     Farming = not Farming
     if Farming then
-        ToggleBtn.Text = "⏹ STOP FARMING"
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+        ToggleBtn.Text = "STOP FARMING"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 25, 25)
+        Status.Text = "● Farming | Range: " .. Range
+        Status.TextColor3 = Color3.fromRGB(255, 100, 100)
     else
-        ToggleBtn.Text = "▶ START FARMING"
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 0)
-        Status.Text = "Stopped | AFK: " .. (AntiAFKEnabled and "ON" or "OFF")
+        ToggleBtn.Text = "START FARMING"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
+        Status.Text = "● Ready"
+        Status.TextColor3 = Color3.fromRGB(180, 180, 180)
     end
 end)
 
@@ -224,19 +175,28 @@ AFKBtn.MouseButton1Click:Connect(function()
     AntiAFKEnabled = not AntiAFKEnabled
     if AntiAFKEnabled then
         AFKBtn.Text = "🔄 Anti AFK: ON"
-        AFKBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+        AFKBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
     else
         AFKBtn.Text = "🔄 Anti AFK: OFF"
-        AFKBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        AFKBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
-    Status.Text = (Farming and "Farming" or "Ready") .. " | AFK: " .. (AntiAFKEnabled and "ON" or "OFF")
+end)
+
+DmgBtn.MouseButton1Click:Connect(function()
+    DmgEnabled = not DmgEnabled
+    if DmgEnabled then
+        DmgBtn.Text = "⚡ DMG x2: ON"
+        DmgBtn.BackgroundColor3 = Color3.fromRGB(180, 100, 0)
+    else
+        DmgBtn.Text = "⚡ DMG x2: OFF"
+        DmgBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    end
 end)
 
 CloseBtn.MouseButton1Click:Connect(function()
     ScriptActive = false
     Farming = false
     ScreenGui:Destroy()
-    print("All scripts terminated!")
 end)
 
 -- Get NPCs in range
@@ -279,7 +239,6 @@ task.spawn(function()
                 
                 local npcs = getNPCsInRange()
                 if #npcs > 0 then
-                    Status.Text = "⚔️ " .. #npcs .. " enemies | AFK: " .. (AntiAFKEnabled and "ON" or "OFF")
                     for _, npc in pairs(npcs) do
                         local myRoot = char:FindFirstChild("HumanoidRootPart")
                         if myRoot then
@@ -289,8 +248,6 @@ task.spawn(function()
                             VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                         end
                     end
-                else
-                    Status.Text = "No enemies | AFK: " .. (AntiAFKEnabled and "ON" or "OFF")
                 end
             end)
         end
@@ -317,4 +274,35 @@ task.spawn(function()
     end
 end)
 
-print("All In One Ready! Farm | Travel | Anti AFK")
+-- DMG Multiplier (hooks when enabled)
+task.spawn(function()
+    local hooked = false
+    while ScriptActive do
+        if DmgEnabled and not hooked then
+            for _, obj in pairs(game:GetDescendants()) do
+                if obj:IsA("RemoteEvent") then
+                    local name = obj.Name:lower()
+                    if name:find("damage") or name:find("hit") or name:find("attack") or name:find("combat") then
+                        pcall(function()
+                            local oldFire = obj.FireServer
+                            obj.FireServer = function(self, ...)
+                                if not DmgEnabled then return oldFire(self, ...) end
+                                local args = {...}
+                                if #args >= 1 and type(args[1]) == "number" then
+                                    args[1] = args[1] * DamageMultiplier
+                                elseif #args >= 2 and type(args[2]) == "number" then
+                                    args[2] = args[2] * DamageMultiplier
+                                end
+                                return oldFire(self, unpack(args))
+                            end
+                        end)
+                    end
+                end
+            end
+            hooked = true
+        end
+        task.wait(5)
+    end
+end)
+
+print("All In One Ready!")
