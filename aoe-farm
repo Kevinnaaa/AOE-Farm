@@ -1,6 +1,6 @@
 --[[
     Sailor Piece - ALL IN ONE (PC + Mobile)
-    AOE Farm + Anti AFK (Jump every 15min) + Speed 50 + Jump 75 + FOV 100
+    AOE Farm + Universal Anti AFK + Speed 50 + Jump 75 + FOV 100
     With minimize button
 --]]
 
@@ -20,6 +20,52 @@ local JumpPower = 75
 local FOV = 100
 
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+
+-- =============================================
+-- UNIVERSAL ANTI AFK (Works on PC & Mobile)
+-- =============================================
+local function AntiAFK()
+    task.spawn(function()
+        while ScriptActive and AntiAFKEnabled do
+            pcall(function()
+                local char = LocalPlayer.Character
+                if char then
+                    -- Method 1: Jump
+                    if char:FindFirstChild("Humanoid") then
+                        char.Humanoid.Jump = true
+                    end
+                    
+                    -- Method 2: Small camera rotation
+                    local camera = workspace.CurrentCamera
+                    if camera then
+                        camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.5), math.rad(0.5), 0)
+                    end
+                    
+                    -- Method 3: Tiny movement
+                    local root = char:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        root.CFrame = root.CFrame * CFrame.new(0.1, 0, 0.1)
+                    end
+                    
+                    -- Method 4: Virtual key press (PC)
+                    if not isMobile then
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                        task.wait(0.1)
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                    end
+                    
+                    -- Method 5: Touch simulation (Mobile)
+                    if isMobile then
+                        VirtualInputManager:SendTouchEvent(Vector2.new(100, 100), 0, true, game)
+                        task.wait(0.05)
+                        VirtualInputManager:SendTouchEvent(Vector2.new(100, 100), 0, false, game)
+                    end
+                end
+            end)
+            task.wait(900) -- Every 15 minutes
+        end
+    end)
+end
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -59,7 +105,7 @@ Title.Size = UDim2.new(0.7, 0, 1, 0)
 Title.Position = UDim2.new(0, 5, 0, 0)
 Title.BackgroundTransparency = 1
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "SAILOR PIECE by kibsss"
+Title.Text = "SAILOR PIECE by kibss"
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 13
@@ -80,7 +126,7 @@ Status.Size = UDim2.new(1, -10, 0, 20)
 Status.Position = UDim2.new(0, 5, 0, 28)
 Status.BackgroundTransparency = 1
 Status.TextColor3 = Color3.fromRGB(0, 255, 0)
-Status.Text = "Ready | Jump:15min"
+Status.Text = "Ready | Anti AFK: Universal"
 Status.Font = Enum.Font.SourceSans
 Status.TextSize = 11
 Status.Parent = Frame
@@ -127,13 +173,8 @@ FrameMinBtn.MouseButton1Click:Connect(toggleMinimize)
 -- Buttons
 ToggleBtn.MouseButton1Click:Connect(function()
     Farming = not Farming
-    if Farming then
-        ToggleBtn.Text = "STOP FARMING"
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 25, 25)
-    else
-        ToggleBtn.Text = "START FARMING"
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
-    end
+    ToggleBtn.Text = Farming and "STOP FARMING" or "START FARMING"
+    ToggleBtn.BackgroundColor3 = Farming and Color3.fromRGB(150, 25, 25) or Color3.fromRGB(30, 120, 30)
 end)
 
 AFKBtn.MouseButton1Click:Connect(function()
@@ -215,20 +256,7 @@ task.spawn(function()
     end
 end)
 
--- Anti AFK: JUMP every 15 minutes
-task.spawn(function()
-    while ScriptActive do
-        if AntiAFKEnabled then
-            pcall(function()
-                local char = LocalPlayer.Character
-                if char and char:FindFirstChild("Humanoid") then
-                    char.Humanoid.Jump = true
-                end
-            end)
-        end
-        task.wait(900) -- 15 minutes = 900 seconds
-    end
-end)
-
+-- Start Anti AFK
+AntiAFK()
 applyStats()
-print("Ready! Anti AFK: Jump every 15 minutes")
+print("Ready! Universal Anti AFK active - Jump + Camera + Move + Touch/Keys")
