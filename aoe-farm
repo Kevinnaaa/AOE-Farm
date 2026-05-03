@@ -1,6 +1,6 @@
 --[[
     Sailor Piece - ALL IN ONE (Clean UI)
-    AOE Farm + Anti AFK + x2 DMG
+    AOE Farm + Anti AFK
     Close with TERMINATE button
 --]]
 
@@ -8,14 +8,11 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local VirtualInputManager = game:GetService("VirtualInputManager")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Farming = false
 local ScriptActive = true
 local AntiAFKEnabled = true
-local DmgEnabled = false
 local Range = 30
-local DamageMultiplier = 2
 
 -- GUI
 local ScreenGui = Instance.new("ScreenGui")
@@ -23,7 +20,7 @@ ScreenGui.Name = "AllInOne"
 ScreenGui.Parent = game:GetService("CoreGui")
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 220, 0, 200)
+Frame.Size = UDim2.new(0, 220, 0, 175)
 Frame.Position = UDim2.new(0, 10, 0, 10)
 Frame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Frame.BorderSizePixel = 0
@@ -49,7 +46,7 @@ Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 14
 Title.Parent = TitleBar
 
--- Divider line
+-- Divider
 local Div1 = Instance.new("Frame")
 Div1.Size = UDim2.new(1, 0, 0, 1)
 Div1.Position = UDim2.new(0, 0, 0, 30)
@@ -77,21 +74,10 @@ Div2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 Div2.BorderSizePixel = 0
 Div2.Parent = Frame
 
--- Section: Farm
-local FarmLabel = Instance.new("TextLabel")
-FarmLabel.Size = UDim2.new(1, -20, 0, 18)
-FarmLabel.Position = UDim2.new(0, 10, 0, 65)
-FarmLabel.BackgroundTransparency = 1
-FarmLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-FarmLabel.Text = "FARMING"
-FarmLabel.TextXAlignment = Enum.TextXAlignment.Left
-FarmLabel.Font = Enum.Font.SourceSansBold
-FarmLabel.TextSize = 10
-FarmLabel.Parent = Frame
-
+-- Farm Button
 local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(1, -20, 0, 30)
-ToggleBtn.Position = UDim2.new(0, 10, 0, 83)
+ToggleBtn.Size = UDim2.new(1, -20, 0, 32)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 68)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
 ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.Text = "START FARMING"
@@ -102,58 +88,32 @@ ToggleBtn.Parent = Frame
 -- Divider
 local Div3 = Instance.new("Frame")
 Div3.Size = UDim2.new(1, 0, 0, 1)
-Div3.Position = UDim2.new(0, 0, 0, 118)
+Div3.Position = UDim2.new(0, 0, 0, 108)
 Div3.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 Div3.BorderSizePixel = 0
 Div3.Parent = Frame
 
--- Section: Features
-local FeatLabel = Instance.new("TextLabel")
-FeatLabel.Size = UDim2.new(1, -20, 0, 18)
-FeatLabel.Position = UDim2.new(0, 10, 0, 122)
-FeatLabel.BackgroundTransparency = 1
-FeatLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-FeatLabel.Text = "FEATURES"
-FeatLabel.TextXAlignment = Enum.TextXAlignment.Left
-FeatLabel.Font = Enum.Font.SourceSansBold
-FeatLabel.TextSize = 10
-FeatLabel.Parent = Frame
-
 -- Anti AFK
 local AFKBtn = Instance.new("TextButton")
-AFKBtn.Size = UDim2.new(1, -20, 0, 25)
-AFKBtn.Position = UDim2.new(0, 10, 0, 140)
+AFKBtn.Size = UDim2.new(1, -20, 0, 28)
+AFKBtn.Position = UDim2.new(0, 10, 0, 115)
 AFKBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
 AFKBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 AFKBtn.Text = "🔄 Anti AFK: ON"
 AFKBtn.Font = Enum.Font.SourceSans
-AFKBtn.TextSize = 11
+AFKBtn.TextSize = 12
 AFKBtn.Parent = Frame
-
--- DMG Toggle
-local DmgBtn = Instance.new("TextButton")
-DmgBtn.Size = UDim2.new(1, -20, 0, 25)
-DmgBtn.Position = UDim2.new(0, 10, 0, 168)
-DmgBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-DmgBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-DmgBtn.Text = "⚡ DMG x2: OFF"
-DmgBtn.Font = Enum.Font.SourceSans
-DmgBtn.TextSize = 11
-DmgBtn.Parent = Frame
 
 -- Terminate Button
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(1, -20, 0, 22)
-CloseBtn.Position = UDim2.new(0, 10, 0, 198)
+CloseBtn.Size = UDim2.new(1, -20, 0, 24)
+CloseBtn.Position = UDim2.new(0, 10, 0, 148)
 CloseBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
 CloseBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
 CloseBtn.Text = "TERMINATE"
 CloseBtn.Font = Enum.Font.SourceSansBold
 CloseBtn.TextSize = 11
 CloseBtn.Parent = Frame
-
--- Update frame size
-Frame.Size = UDim2.new(0, 220, 0, 228)
 
 -- Button Functions
 ToggleBtn.MouseButton1Click:Connect(function()
@@ -179,17 +139,6 @@ AFKBtn.MouseButton1Click:Connect(function()
     else
         AFKBtn.Text = "🔄 Anti AFK: OFF"
         AFKBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    end
-end)
-
-DmgBtn.MouseButton1Click:Connect(function()
-    DmgEnabled = not DmgEnabled
-    if DmgEnabled then
-        DmgBtn.Text = "⚡ DMG x2: ON"
-        DmgBtn.BackgroundColor3 = Color3.fromRGB(180, 100, 0)
-    else
-        DmgBtn.Text = "⚡ DMG x2: OFF"
-        DmgBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     end
 end)
 
@@ -274,35 +223,4 @@ task.spawn(function()
     end
 end)
 
--- DMG Multiplier (hooks when enabled)
-task.spawn(function()
-    local hooked = false
-    while ScriptActive do
-        if DmgEnabled and not hooked then
-            for _, obj in pairs(game:GetDescendants()) do
-                if obj:IsA("RemoteEvent") then
-                    local name = obj.Name:lower()
-                    if name:find("damage") or name:find("hit") or name:find("attack") or name:find("combat") then
-                        pcall(function()
-                            local oldFire = obj.FireServer
-                            obj.FireServer = function(self, ...)
-                                if not DmgEnabled then return oldFire(self, ...) end
-                                local args = {...}
-                                if #args >= 1 and type(args[1]) == "number" then
-                                    args[1] = args[1] * DamageMultiplier
-                                elseif #args >= 2 and type(args[2]) == "number" then
-                                    args[2] = args[2] * DamageMultiplier
-                                end
-                                return oldFire(self, unpack(args))
-                            end
-                        end)
-                    end
-                end
-            end
-            hooked = true
-        end
-        task.wait(5)
-    end
-end)
-
-print("All In One Ready!")
+print("All In One Ready! Farm + Anti AFK")
