@@ -321,11 +321,12 @@ task.spawn(function()
     end
 end)
 
--- Ping Update (FIXED - no extra zeros)
+-- Ping Update (Shows only real ms)
 task.spawn(function()
     while ScriptActive do
         pcall(function()
-            local ping = math.floor(Stats.PerformanceStats.Ping:GetValue())
+            local raw = Stats.PerformanceStats.Ping:GetValue()
+            local ping = math.floor(raw / 1000) -- 126000 becomes 126
             PingLabel.Text = "Ping: " .. ping .. "ms"
             PingLabel.TextColor3 = ping <= 80 and Color3.fromRGB(100, 200, 255) or (ping <= 150 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 100, 100))
         end)
