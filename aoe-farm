@@ -1,7 +1,7 @@
 --[[
     Sailor Piece - ALL IN ONE (Presentable UI)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
-    FPS & Ping Display (Fixed)
+    FPS & Ping Display (Fixed v2)
 --]]
 
 local Players = game:GetService("Players")
@@ -10,7 +10,6 @@ local Workspace = game:GetService("Workspace")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Stats = game:GetService("Stats")
 
 local Farming = false
 local ScriptActive = true
@@ -21,7 +20,6 @@ local Range = 30
 local WalkSpeed = 50
 local JumpPower = 75
 local FOV = 100
-local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 -- FPS Tracking
 local fpsCount = 0
@@ -321,12 +319,11 @@ task.spawn(function()
     end
 end)
 
--- Ping Update (FIXED - shows 126ms not 126000ms)
+-- Ping Update (FIXED - uses GetNetworkPing)
 task.spawn(function()
     while ScriptActive do
         pcall(function()
-            local raw = Stats.PerformanceStats.Ping:GetValue()
-            local ping = math.floor(raw / 1000)
+            local ping = math.floor(LocalPlayer:GetNetworkPing() * 1000)
             PingLabel.Text = "Ping: " .. ping .. "ms"
             PingLabel.TextColor3 = ping <= 80 and Color3.fromRGB(100, 200, 255) or (ping <= 150 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 100, 100))
         end)
