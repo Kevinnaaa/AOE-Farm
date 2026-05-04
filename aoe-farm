@@ -1,7 +1,7 @@
 --[[
-    Sailor Piece - ALL IN ONE
-    AOE Farm + Universal Anti AFK + Speed 50 + Jump 75 + FOV 100
-    Combined with proven anti-AFK method
+    Sailor Piece - ALL IN ONE (Presentable UI)
+    AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
+    FPS & Ping Display
 --]]
 
 local Players = game:GetService("Players")
@@ -9,6 +9,8 @@ local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
 
 local Farming = false
 local ScriptActive = true
@@ -20,8 +22,18 @@ local JumpPower = 75
 local FOV = 100
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
+-- FPS Tracking
+local fpsCount = 0
+local fps = 0
+local lastFPSUpdate = tick()
+
+-- Ping Tracking
+local function getPing()
+    return math.floor(Stats.PerformanceStats.Ping:GetValue() * 1000)
+end
+
 -- =============================================
--- UNIVERSAL ANTI AFK (from popular scripts)
+-- UNIVERSAL ANTI AFK
 -- =============================================
 local function antiAFKLoop()
     task.spawn(function()
@@ -30,169 +42,318 @@ local function antiAFKLoop()
                 pcall(function()
                     local char = LocalPlayer.Character
                     if char then
-                        -- Save original position first time
                         if not originalPosition then
                             local root = char:FindFirstChild("HumanoidRootPart")
-                            if root then
-                                originalPosition = root.CFrame
-                            end
+                            if root then originalPosition = root.CFrame end
                         end
-                        
-                        -- Walk to a random nearby point
                         local humanoid = char:FindFirstChild("Humanoid")
                         local root = char:FindFirstChild("HumanoidRootPart")
-                        
                         if humanoid and root and originalPosition then
-                            -- Jump
                             humanoid.Jump = true
-                            
-                            -- Walk in random direction
-                            local randomOffset = Vector3.new(
-                                math.random(-20, 20),
-                                0,
-                                math.random(-20, 20)
-                            )
-                            local targetPos = originalPosition.Position + randomOffset
+                            local targetPos = originalPosition.Position + Vector3.new(math.random(-20,20), 0, math.random(-20,20))
                             humanoid:MoveTo(targetPos)
-                            
-                            -- Wait to arrive
                             task.wait(3)
-                            
-                            -- Walk back to original spot
                             humanoid:MoveTo(originalPosition.Position)
-                            
-                            -- Wait to arrive
                             task.wait(3)
                         end
                     end
                 end)
             end
-            task.wait(840) -- 14 minutes
+            task.wait(840)
         end
     end)
 end
 
--- GUI Setup
+-- =============================================
+-- PRESENTABLE GUI
+-- =============================================
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AllInOne"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game:GetService("CoreGui")
 
+-- Main Container
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 220, 0, 240)
+MainFrame.Position = UDim2.new(0, 10, 0, 80)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
+
+-- Minimize Button
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 32, 0, 32)
-MinBtn.Position = UDim2.new(0, 10, 0, 100)
+MinBtn.Size = UDim2.new(0, 30, 0, 30)
+MinBtn.Position = UDim2.new(0, 10, 0, 80)
 MinBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MinBtn.BorderSizePixel = 0
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinBtn.Text = "⚔️"
 MinBtn.Font = Enum.Font.SourceSansBold
-MinBtn.TextSize = 16
+MinBtn.TextSize = 15
 MinBtn.Parent = ScreenGui
 
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 200, 0, 160)
-Frame.Position = UDim2.new(0, 45, 0, 100)
-Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Frame.BorderSizePixel = 0
-Frame.Active = true
-Frame.Draggable = true
-Frame.Visible = true
-Frame.Parent = ScreenGui
+-- Header
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 35)
+Header.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Header.BorderSizePixel = 0
+Header.Parent = MainFrame
 
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 25)
-TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = Frame
+local HeaderText = Instance.new("TextLabel")
+HeaderText.Size = UDim2.new(0.6, 0, 1, 0)
+HeaderText.Position = UDim2.new(0, 12, 0, 0)
+HeaderText.BackgroundTransparency = 1
+HeaderText.TextColor3 = Color3.fromRGB(255, 255, 255)
+HeaderText.Text = "⚔️ SAILOR PIECE"
+HeaderText.TextXAlignment = Enum.TextXAlignment.Left
+HeaderText.Font = Enum.Font.SourceSansBold
+HeaderText.TextSize = 14
+HeaderText.Parent = Header
 
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(0.7, 0, 1, 0)
-Title.Position = UDim2.new(0, 5, 0, 0)
-Title.BackgroundTransparency = 1
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "SAILOR PIECE by kibsss"
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 13
-Title.Parent = TitleBar
+-- Minimize dash
+local DashBtn = Instance.new("TextButton")
+DashBtn.Size = UDim2.new(0, 28, 0, 28)
+DashBtn.Position = UDim2.new(1, -32, 0, 4)
+DashBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+DashBtn.BorderSizePixel = 0
+DashBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DashBtn.Text = "—"
+DashBtn.Font = Enum.Font.SourceSansBold
+DashBtn.TextSize = 14
+DashBtn.Parent = Header
 
-local FrameMinBtn = Instance.new("TextButton")
-FrameMinBtn.Size = UDim2.new(0, 25, 0, 25)
-FrameMinBtn.Position = UDim2.new(1, -25, 0, 0)
-FrameMinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-FrameMinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FrameMinBtn.Text = "—"
-FrameMinBtn.Font = Enum.Font.SourceSansBold
-FrameMinBtn.TextSize = 14
-FrameMinBtn.Parent = TitleBar
+-- Stats Bar (FPS & Ping)
+local StatsBar = Instance.new("Frame")
+StatsBar.Size = UDim2.new(1, 0, 0, 22)
+StatsBar.Position = UDim2.new(0, 0, 0, 35)
+StatsBar.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+StatsBar.BorderSizePixel = 0
+StatsBar.Parent = MainFrame
 
-local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -10, 0, 20)
-Status.Position = UDim2.new(0, 5, 0, 28)
-Status.BackgroundTransparency = 1
-Status.TextColor3 = Color3.fromRGB(0, 255, 0)
-Status.Text = "Ready | Anti AFK: Walk"
-Status.Font = Enum.Font.SourceSans
-Status.TextSize = 11
-Status.Parent = Frame
+local FPSLabel = Instance.new("TextLabel")
+FPSLabel.Size = UDim2.new(0.5, -10, 1, 0)
+FPSLabel.Position = UDim2.new(0, 10, 0, 0)
+FPSLabel.BackgroundTransparency = 1
+FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+FPSLabel.Text = "FPS: --"
+FPSLabel.TextXAlignment = Enum.TextXAlignment.Left
+FPSLabel.Font = Enum.Font.SourceSansBold
+FPSLabel.TextSize = 11
+FPSLabel.Parent = StatsBar
 
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(1, -10, 0, 35)
-ToggleBtn.Position = UDim2.new(0, 5, 0, 52)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Text = "START FARMING"
-ToggleBtn.Font = Enum.Font.SourceSansBold
-ToggleBtn.TextSize = 13
-ToggleBtn.Parent = Frame
+local PingLabel = Instance.new("TextLabel")
+PingLabel.Size = UDim2.new(0.5, -10, 1, 0)
+PingLabel.Position = UDim2.new(0.5, 0, 0, 0)
+PingLabel.BackgroundTransparency = 1
+PingLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+PingLabel.Text = "Ping: --ms"
+PingLabel.TextXAlignment = Enum.TextXAlignment.Right
+PingLabel.Font = Enum.Font.SourceSansBold
+PingLabel.TextSize = 11
+PingLabel.Parent = StatsBar
 
+-- Divider
+local Div1 = Instance.new("Frame")
+Div1.Size = UDim2.new(1, 0, 0, 1)
+Div1.Position = UDim2.new(0, 0, 0, 57)
+Div1.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Div1.BorderSizePixel = 0
+Div1.Parent = MainFrame
+
+-- Status
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -20, 0, 18)
+StatusLabel.Position = UDim2.new(0, 10, 0, 62)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusLabel.Text = "● Ready"
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.Font = Enum.Font.SourceSans
+StatusLabel.TextSize = 11
+StatusLabel.Parent = MainFrame
+
+-- Divider
+local Div2 = Instance.new("Frame")
+Div2.Size = UDim2.new(1, 0, 0, 1)
+Div2.Position = UDim2.new(0, 0, 0, 83)
+Div2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Div2.BorderSizePixel = 0
+Div2.Parent = MainFrame
+
+-- Section: Controls
+local ControlsLabel = Instance.new("TextLabel")
+ControlsLabel.Size = UDim2.new(1, -20, 0, 16)
+ControlsLabel.Position = UDim2.new(0, 10, 0, 88)
+ControlsLabel.BackgroundTransparency = 1
+ControlsLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
+ControlsLabel.Text = "CONTROLS"
+ControlsLabel.TextXAlignment = Enum.TextXAlignment.Left
+ControlsLabel.Font = Enum.Font.SourceSansBold
+ControlsLabel.TextSize = 9
+ControlsLabel.Parent = MainFrame
+
+-- Farm Button
+local FarmBtn = Instance.new("TextButton")
+FarmBtn.Size = UDim2.new(1, -20, 0, 34)
+FarmBtn.Position = UDim2.new(0, 10, 0, 105)
+FarmBtn.BackgroundColor3 = Color3.fromRGB(30, 130, 30)
+FarmBtn.BorderSizePixel = 0
+FarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FarmBtn.Text = "▶ START FARMING"
+FarmBtn.Font = Enum.Font.SourceSansBold
+FarmBtn.TextSize = 13
+FarmBtn.Parent = MainFrame
+
+-- AFK Button
 local AFKBtn = Instance.new("TextButton")
-AFKBtn.Size = UDim2.new(1, -10, 0, 25)
-AFKBtn.Position = UDim2.new(0, 5, 0, 92)
+AFKBtn.Size = UDim2.new(1, -20, 0, 28)
+AFKBtn.Position = UDim2.new(0, 10, 0, 143)
 AFKBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
+AFKBtn.BorderSizePixel = 0
 AFKBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AFKBtn.Text = "Anti AFK: ON"
+AFKBtn.Text = "🔄 Anti AFK: ON"
 AFKBtn.Font = Enum.Font.SourceSans
 AFKBtn.TextSize = 12
-AFKBtn.Parent = Frame
+AFKBtn.Parent = MainFrame
 
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(1, -10, 0, 25)
-CloseBtn.Position = UDim2.new(0, 5, 0, 122)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
-CloseBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
-CloseBtn.Text = "TERMINATE"
-CloseBtn.Font = Enum.Font.SourceSansBold
-CloseBtn.TextSize = 11
-CloseBtn.Parent = Frame
+-- Divider
+local Div3 = Instance.new("Frame")
+Div3.Size = UDim2.new(1, 0, 0, 1)
+Div3.Position = UDim2.new(0, 0, 0, 178)
+Div3.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Div3.BorderSizePixel = 0
+Div3.Parent = MainFrame
+
+-- Info Row
+local InfoRow = Instance.new("Frame")
+InfoRow.Size = UDim2.new(1, 0, 0, 18)
+InfoRow.Position = UDim2.new(0, 0, 0, 182)
+InfoRow.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+InfoRow.BorderSizePixel = 0
+InfoRow.Parent = MainFrame
+
+local SpeedInfo = Instance.new("TextLabel")
+SpeedInfo.Size = UDim2.new(0.33, -5, 1, 0)
+SpeedInfo.Position = UDim2.new(0, 8, 0, 0)
+SpeedInfo.BackgroundTransparency = 1
+SpeedInfo.TextColor3 = Color3.fromRGB(255, 200, 0)
+SpeedInfo.Text = "S:"..WalkSpeed
+SpeedInfo.TextXAlignment = Enum.TextXAlignment.Left
+SpeedInfo.Font = Enum.Font.SourceSans
+SpeedInfo.TextSize = 10
+SpeedInfo.Parent = InfoRow
+
+local JumpInfo = Instance.new("TextLabel")
+JumpInfo.Size = UDim2.new(0.33, -5, 1, 0)
+JumpInfo.Position = UDim2.new(0.33, 5, 0, 0)
+JumpInfo.BackgroundTransparency = 1
+JumpInfo.TextColor3 = Color3.fromRGB(255, 200, 0)
+JumpInfo.Text = "J:"..JumpPower
+JumpInfo.TextXAlignment = Enum.TextXAlignment.Center
+JumpInfo.Font = Enum.Font.SourceSans
+JumpInfo.TextSize = 10
+JumpInfo.Parent = InfoRow
+
+local RangeInfo = Instance.new("TextLabel")
+RangeInfo.Size = UDim2.new(0.33, -5, 1, 0)
+RangeInfo.Position = UDim2.new(0.66, 0, 0, 0)
+RangeInfo.BackgroundTransparency = 1
+RangeInfo.TextColor3 = Color3.fromRGB(255, 200, 0)
+RangeInfo.Text = "R:"..Range
+RangeInfo.TextXAlignment = Enum.TextXAlignment.Right
+RangeInfo.Font = Enum.Font.SourceSans
+RangeInfo.TextSize = 10
+RangeInfo.Parent = InfoRow
+
+-- Terminate Button
+local TermBtn = Instance.new("TextButton")
+TermBtn.Size = UDim2.new(1, -20, 0, 24)
+TermBtn.Position = UDim2.new(0, 10, 0, 206)
+TermBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 20)
+TermBtn.BorderSizePixel = 0
+TermBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+TermBtn.Text = "⏏ TERMINATE"
+TermBtn.Font = Enum.Font.SourceSansBold
+TermBtn.TextSize = 11
+TermBtn.Parent = MainFrame
+
+-- Footer
+local Footer = Instance.new("TextLabel")
+Footer.Size = UDim2.new(1, -20, 0, 14)
+Footer.Position = UDim2.new(0, 10, 0, 232)
+Footer.BackgroundTransparency = 1
+Footer.TextColor3 = Color3.fromRGB(80, 80, 80)
+Footer.Text = "by kibsss"
+Footer.TextXAlignment = Enum.TextXAlignment.Center
+Footer.Font = Enum.Font.SourceSans
+Footer.TextSize = 9
+Footer.Parent = MainFrame
+
+-- =============================================
+-- FUNCTIONS
+-- =============================================
 
 -- Minimize
 local function toggleMinimize()
     Minimized = not Minimized
-    Frame.Visible = not Minimized
-    MinBtn.BackgroundColor3 = Minimized and Color3.fromRGB(30, 120, 30) or Color3.fromRGB(25, 25, 25)
+    MainFrame.Visible = not Minimized
+    MinBtn.BackgroundColor3 = Minimized and Color3.fromRGB(30, 130, 30) or Color3.fromRGB(25, 25, 25)
 end
 MinBtn.MouseButton1Click:Connect(toggleMinimize)
-FrameMinBtn.MouseButton1Click:Connect(toggleMinimize)
+DashBtn.MouseButton1Click:Connect(toggleMinimize)
 
--- Buttons
-ToggleBtn.MouseButton1Click:Connect(function()
+-- Farm Toggle
+FarmBtn.MouseButton1Click:Connect(function()
     Farming = not Farming
-    ToggleBtn.Text = Farming and "STOP FARMING" or "START FARMING"
-    ToggleBtn.BackgroundColor3 = Farming and Color3.fromRGB(150, 25, 25) or Color3.fromRGB(30, 120, 30)
+    FarmBtn.Text = Farming and "⏹ STOP FARMING" or "▶ START FARMING"
+    FarmBtn.BackgroundColor3 = Farming and Color3.fromRGB(150, 25, 25) or Color3.fromRGB(30, 130, 30)
+    StatusLabel.Text = Farming and "● Farming" or "● Ready"
+    StatusLabel.TextColor3 = Farming and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(180, 180, 180)
 end)
 
+-- AFK Toggle
 AFKBtn.MouseButton1Click:Connect(function()
     AntiAFKEnabled = not AntiAFKEnabled
-    AFKBtn.Text = "Anti AFK: " .. (AntiAFKEnabled and "ON" or "OFF")
+    AFKBtn.Text = "🔄 Anti AFK: " .. (AntiAFKEnabled and "ON" or "OFF")
     AFKBtn.BackgroundColor3 = AntiAFKEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(60, 60, 60)
 end)
 
-CloseBtn.MouseButton1Click:Connect(function()
+-- Terminate
+TermBtn.MouseButton1Click:Connect(function()
     ScriptActive = false
     Farming = false
     originalPosition = nil
     ScreenGui:Destroy()
+end)
+
+-- FPS Update
+task.spawn(function()
+    while ScriptActive do
+        fpsCount = fpsCount + 1
+        if tick() - lastFPSUpdate >= 0.5 then
+            fps = math.floor(fpsCount / (tick() - lastFPSUpdate))
+            fpsCount = 0
+            lastFPSUpdate = tick()
+            FPSLabel.Text = "FPS: " .. fps
+            FPSLabel.TextColor3 = fps >= 50 and Color3.fromRGB(0, 255, 100) or (fps >= 25 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 80, 80))
+        end
+        task.wait()
+    end
+end)
+
+-- Ping Update
+task.spawn(function()
+    while ScriptActive do
+        pcall(function()
+            local ping = getPing()
+            PingLabel.Text = "Ping: " .. ping .. "ms"
+            PingLabel.TextColor3 = ping <= 80 and Color3.fromRGB(100, 200, 255) or (ping <= 150 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 100, 100))
+        end)
+        task.wait(1)
+    end
 end)
 
 -- Apply stats
@@ -201,22 +362,13 @@ local function applyStats()
         local char = LocalPlayer.Character
         if char then
             local h = char:FindFirstChild("Humanoid")
-            if h then
-                h.WalkSpeed = WalkSpeed
-                h.JumpPower = JumpPower
-            end
+            if h then h.WalkSpeed = WalkSpeed; h.JumpPower = JumpPower end
         end
         local cam = workspace.CurrentCamera
         if cam then cam.FieldOfView = FOV end
     end)
 end
-
-LocalPlayer.CharacterAdded:Connect(function() 
-    task.wait(0.5) 
-    originalPosition = nil -- Reset position on respawn
-    applyStats() 
-end)
-
+LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5) originalPosition = nil; applyStats() end)
 task.spawn(function() while ScriptActive do applyStats() task.wait(1) end end)
 
 -- Get NPCs
@@ -267,7 +419,7 @@ task.spawn(function()
     end
 end)
 
--- Start Anti AFK
+-- Start
 antiAFKLoop()
 applyStats()
-print("Ready! Anti AFK: Walks away and returns every 14 minutes")
+print("Ready! by kibsss")
