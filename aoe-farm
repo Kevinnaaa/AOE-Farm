@@ -1,7 +1,7 @@
 --[[
     Sailor Piece - ALL IN ONE (Presentable UI)
-    AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
-    FPS & Ping Display (Fixed v2)
+    AOE Farm + Anti AFK (Mobile/PC) + Speed 50 + Jump 75 + FOV 100
+    FPS & Ping Display | No character movement
 --]]
 
 local Players = game:GetService("Players")
@@ -15,11 +15,11 @@ local Farming = false
 local ScriptActive = true
 local AntiAFKEnabled = true
 local Minimized = false
-local originalPosition = nil
 local Range = 30
 local WalkSpeed = 50
 local JumpPower = 75
 local FOV = 100
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 -- FPS Tracking
 local fpsCount = 0
@@ -27,7 +27,7 @@ local fps = 0
 local lastFPSUpdate = tick()
 
 -- =============================================
--- UNIVERSAL ANTI AFK
+-- ANTI AFK - Mobile + PC (No Movement)
 -- =============================================
 local function antiAFKLoop()
     task.spawn(function()
@@ -35,25 +35,40 @@ local function antiAFKLoop()
             if AntiAFKEnabled then
                 pcall(function()
                     local char = LocalPlayer.Character
-                    if char then
-                        if not originalPosition then
-                            local root = char:FindFirstChild("HumanoidRootPart")
-                            if root then originalPosition = root.CFrame end
+                    
+                    if isMobile then
+                        -- Mobile: Touch simulation + jump + camera
+                        local touchPos = Vector2.new(math.random(100, 300), math.random(100, 400))
+                        VirtualInputManager:SendTouchEvent(touchPos, 0, true, game)
+                        task.wait(0.05)
+                        VirtualInputManager:SendTouchEvent(touchPos, 0, false, game)
+                        
+                        if char and char:FindFirstChild("Humanoid") then
+                            char.Humanoid.Jump = true
                         end
-                        local humanoid = char:FindFirstChild("Humanoid")
-                        local root = char:FindFirstChild("HumanoidRootPart")
-                        if humanoid and root and originalPosition then
-                            humanoid.Jump = true
-                            local targetPos = originalPosition.Position + Vector3.new(math.random(-20,20), 0, math.random(-20,20))
-                            humanoid:MoveTo(targetPos)
-                            task.wait(3)
-                            humanoid:MoveTo(originalPosition.Position)
-                            task.wait(3)
+                        
+                        local camera = workspace.CurrentCamera
+                        if camera then
+                            camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.5), math.rad(0.5), 0)
+                        end
+                    else
+                        -- PC: Keyboard + jump + camera
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
+                        task.wait(0.1)
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
+                        
+                        if char and char:FindFirstChild("Humanoid") then
+                            char.Humanoid.Jump = true
+                        end
+                        
+                        local camera = workspace.CurrentCamera
+                        if camera then
+                            camera.CFrame = camera.CFrame * CFrame.Angles(0, 0.05, 0)
                         end
                     end
                 end)
             end
-            task.wait(840)
+            task.wait(840) -- 14 minutes
         end
     end)
 end
@@ -300,7 +315,6 @@ end)
 TermBtn.MouseButton1Click:Connect(function()
     ScriptActive = false
     Farming = false
-    originalPosition = nil
     ScreenGui:Destroy()
 end)
 
@@ -319,7 +333,7 @@ task.spawn(function()
     end
 end)
 
--- Ping Update (FIXED - uses GetNetworkPing)
+-- Ping Update
 task.spawn(function()
     while ScriptActive do
         pcall(function()
@@ -343,7 +357,7 @@ local function applyStats()
         if cam then cam.FieldOfView = FOV end
     end)
 end
-LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5) originalPosition = nil; applyStats() end)
+LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5) applyStats() end)
 task.spawn(function() while ScriptActive do applyStats() task.wait(1) end end)
 
 -- Get NPCs
