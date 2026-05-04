@@ -1,262 +1,215 @@
 --[[
-    Sailor Piece - ALL IN ONE (PC + Mobile)
-    AOE Farm + Universal Anti AFK + Speed 50 + Jump 75 + FOV 100
-    With minimize button
+    Sailor Piece - ALL IN ONE + Universal Anti AFK
+    Just paste everything and execute once
 --]]
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Workspace = game:GetService("Workspace")
-local VirtualInputManager = game:GetService("VirtualInputManager")
-local UserInputService = game:GetService("UserInputService")
-
-local Farming = false
-local ScriptActive = true
-local AntiAFKEnabled = true
-local Minimized = false
-local Range = 30
-local WalkSpeed = 50
-local JumpPower = 75
-local FOV = 100
-
-local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-
 -- =============================================
--- UNIVERSAL ANTI AFK (Works on PC & Mobile)
+-- PART 1: ANTI AFK (from evxncodes)
 -- =============================================
-local function AntiAFK()
-    task.spawn(function()
-        while ScriptActive and AntiAFKEnabled do
-            pcall(function()
-                local char = LocalPlayer.Character
-                if char then
-                    -- Method 1: Jump
-                    if char:FindFirstChild("Humanoid") then
-                        char.Humanoid.Jump = true
-                    end
-                    
-                    -- Method 2: Small camera rotation
-                    local camera = workspace.CurrentCamera
-                    if camera then
-                        camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.5), math.rad(0.5), 0)
-                    end
-                    
-                    -- Method 3: Tiny movement
-                    local root = char:FindFirstChild("HumanoidRootPart")
-                    if root then
-                        root.CFrame = root.CFrame * CFrame.new(0.1, 0, 0.1)
-                    end
-                    
-                    -- Method 4: Virtual key press (PC)
-                    if not isMobile then
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-                        task.wait(0.1)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-                    end
-                    
-                    -- Method 5: Touch simulation (Mobile)
-                    if isMobile then
-                        VirtualInputManager:SendTouchEvent(Vector2.new(100, 100), 0, true, game)
-                        task.wait(0.05)
-                        VirtualInputManager:SendTouchEvent(Vector2.new(100, 100), 0, false, game)
-                    end
-                end
-            end)
-            task.wait(900) -- Every 15 minutes
-        end
-    end)
-end
-
--- GUI
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AllInOne"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = game:GetService("CoreGui")
-
-local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 32, 0, 32)
-MinBtn.Position = UDim2.new(0, 10, 0, 100)
-MinBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-MinBtn.BorderSizePixel = 0
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.Text = "⚔️"
-MinBtn.Font = Enum.Font.SourceSansBold
-MinBtn.TextSize = 16
-MinBtn.Parent = ScreenGui
-
-local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 200, 0, 160)
-Frame.Position = UDim2.new(0, 45, 0, 100)
-Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-Frame.BorderSizePixel = 0
-Frame.Active = true
-Frame.Draggable = true
-Frame.Visible = true
-Frame.Parent = ScreenGui
-
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, 25)
-TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = Frame
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(0.7, 0, 1, 0)
-Title.Position = UDim2.new(0, 5, 0, 0)
-Title.BackgroundTransparency = 1
-Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "SAILOR PIECE by kibss"
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.Font = Enum.Font.SourceSansBold
-Title.TextSize = 13
-Title.Parent = TitleBar
-
-local FrameMinBtn = Instance.new("TextButton")
-FrameMinBtn.Size = UDim2.new(0, 25, 0, 25)
-FrameMinBtn.Position = UDim2.new(1, -25, 0, 0)
-FrameMinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-FrameMinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FrameMinBtn.Text = "—"
-FrameMinBtn.Font = Enum.Font.SourceSansBold
-FrameMinBtn.TextSize = 14
-FrameMinBtn.Parent = TitleBar
-
-local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -10, 0, 20)
-Status.Position = UDim2.new(0, 5, 0, 28)
-Status.BackgroundTransparency = 1
-Status.TextColor3 = Color3.fromRGB(0, 255, 0)
-Status.Text = "Ready | Anti AFK: Universal"
-Status.Font = Enum.Font.SourceSans
-Status.TextSize = 11
-Status.Parent = Frame
-
-local ToggleBtn = Instance.new("TextButton")
-ToggleBtn.Size = UDim2.new(1, -10, 0, 35)
-ToggleBtn.Position = UDim2.new(0, 5, 0, 52)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Text = "START FARMING"
-ToggleBtn.Font = Enum.Font.SourceSansBold
-ToggleBtn.TextSize = 13
-ToggleBtn.Parent = Frame
-
-local AFKBtn = Instance.new("TextButton")
-AFKBtn.Size = UDim2.new(1, -10, 0, 25)
-AFKBtn.Position = UDim2.new(0, 5, 0, 92)
-AFKBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-AFKBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AFKBtn.Text = "Anti AFK: ON"
-AFKBtn.Font = Enum.Font.SourceSans
-AFKBtn.TextSize = 12
-AFKBtn.Parent = Frame
-
-local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(1, -10, 0, 25)
-CloseBtn.Position = UDim2.new(0, 5, 0, 122)
-CloseBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
-CloseBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
-CloseBtn.Text = "TERMINATE"
-CloseBtn.Font = Enum.Font.SourceSansBold
-CloseBtn.TextSize = 11
-CloseBtn.Parent = Frame
-
--- Minimize
-local function toggleMinimize()
-    Minimized = not Minimized
-    Frame.Visible = not Minimized
-    MinBtn.BackgroundColor3 = Minimized and Color3.fromRGB(30, 120, 30) or Color3.fromRGB(25, 25, 25)
-end
-MinBtn.MouseButton1Click:Connect(toggleMinimize)
-FrameMinBtn.MouseButton1Click:Connect(toggleMinimize)
-
--- Buttons
-ToggleBtn.MouseButton1Click:Connect(function()
-    Farming = not Farming
-    ToggleBtn.Text = Farming and "STOP FARMING" or "START FARMING"
-    ToggleBtn.BackgroundColor3 = Farming and Color3.fromRGB(150, 25, 25) or Color3.fromRGB(30, 120, 30)
-end)
-
-AFKBtn.MouseButton1Click:Connect(function()
-    AntiAFKEnabled = not AntiAFKEnabled
-    AFKBtn.Text = "Anti AFK: " .. (AntiAFKEnabled and "ON" or "OFF")
-    AFKBtn.BackgroundColor3 = AntiAFKEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(60, 60, 60)
-end)
-
-CloseBtn.MouseButton1Click:Connect(function()
-    ScriptActive = false
-    Farming = false
-    ScreenGui:Destroy()
-end)
-
--- Apply stats
-local function applyStats()
+local function loadAntiAFK()
     pcall(function()
-        local char = LocalPlayer.Character
-        if char then
-            local h = char:FindFirstChild("Humanoid")
-            if h then
-                h.WalkSpeed = WalkSpeed
-                h.JumpPower = JumpPower
-            end
-        end
-        local cam = workspace.CurrentCamera
-        if cam then cam.FieldOfView = FOV end
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/evxncodes/mainroblox/main/anti-afk", true))()
     end)
 end
 
-LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5) applyStats() end)
-task.spawn(function() while ScriptActive do applyStats() task.wait(1) end end)
+-- =============================================
+-- PART 2: SAILOR PIECE FARM
+-- =============================================
+local function loadSailorFarm()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+    local Workspace = game:GetService("Workspace")
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+    local UserInputService = game:GetService("UserInputService")
 
--- Get NPCs
-local function getNPCsInRange()
-    local char = LocalPlayer.Character
-    if not char then return {} end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return {} end
-    local nearby = {}
-    local npcFolder = Workspace:FindFirstChild("NPCs")
-    if npcFolder then
-        for _, obj in pairs(npcFolder:GetChildren()) do
-            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                local npcRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
-                if npcRoot then
-                    local dist = (root.Position - npcRoot.Position).Magnitude
-                    if dist <= Range then table.insert(nearby, {root = npcRoot, dist = dist}) end
+    local Farming = false
+    local ScriptActive = true
+    local Minimized = false
+    local Range = 30
+    local WalkSpeed = 50
+    local JumpPower = 75
+    local FOV = 100
+
+    -- GUI
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "AllInOne"
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = game:GetService("CoreGui")
+
+    local MinBtn = Instance.new("TextButton")
+    MinBtn.Size = UDim2.new(0, 32, 0, 32)
+    MinBtn.Position = UDim2.new(0, 10, 0, 100)
+    MinBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    MinBtn.BorderSizePixel = 0
+    MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    MinBtn.Text = "⚔️"
+    MinBtn.Font = Enum.Font.SourceSansBold
+    MinBtn.TextSize = 16
+    MinBtn.Parent = ScreenGui
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(0, 200, 0, 160)
+    Frame.Position = UDim2.new(0, 45, 0, 100)
+    Frame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+    Frame.BorderSizePixel = 0
+    Frame.Active = true
+    Frame.Draggable = true
+    Frame.Visible = true
+    Frame.Parent = ScreenGui
+
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Size = UDim2.new(1, 0, 0, 25)
+    TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    TitleBar.BorderSizePixel = 0
+    TitleBar.Parent = Frame
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(0.7, 0, 1, 0)
+    Title.Position = UDim2.new(0, 5, 0, 0)
+    Title.BackgroundTransparency = 1
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.Text = "SAILOR PIECE"
+    Title.TextXAlignment = Enum.TextXAlignment.Left
+    Title.Font = Enum.Font.SourceSansBold
+    Title.TextSize = 13
+    Title.Parent = TitleBar
+
+    local FrameMinBtn = Instance.new("TextButton")
+    FrameMinBtn.Size = UDim2.new(0, 25, 0, 25)
+    FrameMinBtn.Position = UDim2.new(1, -25, 0, 0)
+    FrameMinBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    FrameMinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FrameMinBtn.Text = "—"
+    FrameMinBtn.Font = Enum.Font.SourceSansBold
+    FrameMinBtn.TextSize = 14
+    FrameMinBtn.Parent = TitleBar
+
+    local Status = Instance.new("TextLabel")
+    Status.Size = UDim2.new(1, -10, 0, 20)
+    Status.Position = UDim2.new(0, 5, 0, 28)
+    Status.BackgroundTransparency = 1
+    Status.TextColor3 = Color3.fromRGB(0, 255, 0)
+    Status.Text = "Ready | Anti AFK: External"
+    Status.Font = Enum.Font.SourceSans
+    Status.TextSize = 11
+    Status.Parent = Frame
+
+    local ToggleBtn = Instance.new("TextButton")
+    ToggleBtn.Size = UDim2.new(1, -10, 0, 35)
+    ToggleBtn.Position = UDim2.new(0, 5, 0, 52)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(30, 120, 30)
+    ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleBtn.Text = "START FARMING"
+    ToggleBtn.Font = Enum.Font.SourceSansBold
+    ToggleBtn.TextSize = 13
+    ToggleBtn.Parent = Frame
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(1, -10, 0, 25)
+    CloseBtn.Position = UDim2.new(0, 5, 0, 92)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(120, 25, 25)
+    CloseBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+    CloseBtn.Text = "TERMINATE"
+    CloseBtn.Font = Enum.Font.SourceSansBold
+    CloseBtn.TextSize = 11
+    CloseBtn.Parent = Frame
+
+    -- Minimize
+    local function toggleMinimize()
+        Minimized = not Minimized
+        Frame.Visible = not Minimized
+        MinBtn.BackgroundColor3 = Minimized and Color3.fromRGB(30, 120, 30) or Color3.fromRGB(25, 25, 25)
+    end
+    MinBtn.MouseButton1Click:Connect(toggleMinimize)
+    FrameMinBtn.MouseButton1Click:Connect(toggleMinimize)
+
+    -- Buttons
+    ToggleBtn.MouseButton1Click:Connect(function()
+        Farming = not Farming
+        ToggleBtn.Text = Farming and "STOP FARMING" or "START FARMING"
+        ToggleBtn.BackgroundColor3 = Farming and Color3.fromRGB(150, 25, 25) or Color3.fromRGB(30, 120, 30)
+    end)
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        ScriptActive = false
+        Farming = false
+        ScreenGui:Destroy()
+    end)
+
+    -- Apply stats
+    local function applyStats()
+        pcall(function()
+            local char = LocalPlayer.Character
+            if char then
+                local h = char:FindFirstChild("Humanoid")
+                if h then
+                    h.WalkSpeed = WalkSpeed
+                    h.JumpPower = JumpPower
+                end
+            end
+            local cam = workspace.CurrentCamera
+            if cam then cam.FieldOfView = FOV end
+        end)
+    end
+
+    LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5) applyStats() end)
+    task.spawn(function() while ScriptActive do applyStats() task.wait(1) end end)
+
+    -- Get NPCs
+    local function getNPCsInRange()
+        local char = LocalPlayer.Character
+        if not char then return {} end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return {} end
+        local nearby = {}
+        local npcFolder = Workspace:FindFirstChild("NPCs")
+        if npcFolder then
+            for _, obj in pairs(npcFolder:GetChildren()) do
+                if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
+                    local npcRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
+                    if npcRoot then
+                        local dist = (root.Position - npcRoot.Position).Magnitude
+                        if dist <= Range then table.insert(nearby, {root = npcRoot, dist = dist}) end
+                    end
                 end
             end
         end
+        table.sort(nearby, function(a, b) return a.dist < b.dist end)
+        return nearby
     end
-    table.sort(nearby, function(a, b) return a.dist < b.dist end)
-    return nearby
-end
 
--- AOE Farm
-task.spawn(function()
-    while ScriptActive do
-        if Farming then
-            pcall(function()
-                local char = LocalPlayer.Character
-                if not char then return end
-                local npcs = getNPCsInRange()
-                if #npcs > 0 then
-                    for _, npc in pairs(npcs) do
-                        local myRoot = char:FindFirstChild("HumanoidRootPart")
-                        if myRoot then
-                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(npc.root.Position.X, myRoot.Position.Y, npc.root.Position.Z))
-                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                            task.wait(0.05)
-                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+    -- AOE Farm
+    task.spawn(function()
+        while ScriptActive do
+            if Farming then
+                pcall(function()
+                    local char = LocalPlayer.Character
+                    if not char then return end
+                    local npcs = getNPCsInRange()
+                    if #npcs > 0 then
+                        for _, npc in pairs(npcs) do
+                            local myRoot = char:FindFirstChild("HumanoidRootPart")
+                            if myRoot then
+                                myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(npc.root.Position.X, myRoot.Position.Y, npc.root.Position.Z))
+                                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                                task.wait(0.05)
+                                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+                            end
                         end
                     end
-                end
-            end)
+                end)
+            end
+            task.wait(0.15)
         end
-        task.wait(0.15)
-    end
-end)
+    end)
 
--- Start Anti AFK
-AntiAFK()
-applyStats()
-print("Ready! Universal Anti AFK active - Jump + Camera + Move + Touch/Keys")
+    applyStats()
+    print("Sailor Piece Farm Ready!")
+end
+
+-- =============================================
+-- RUN BOTH
+-- =============================================
+loadAntiAFK()    -- Start the universal anti AFK first
+loadSailorFarm() -- Then start the farm GUI
+print("Both scripts loaded! Anti AFK + Farm active.")
