@@ -48,7 +48,7 @@ local function antiAFKLoop()
                     end
                 end)
             end
-            task.wait(840) -- 14 minutes
+            task.wait(300) -- 5 minutes
         end
     end)
 end
