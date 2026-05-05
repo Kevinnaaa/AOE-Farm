@@ -1,7 +1,7 @@
 --[[
     Sailor Piece - ALL IN ONE (Presentable UI)
-    AOE Farm + Touch Anti AFK + Speed 50 + Jump 75 + FOV 100
-    FPS & Ping Display
+    AOE Farm + Anti AFK (Mobile/PC) + Speed 50 + Jump 75 + FOV 100
+    FPS & Ping Display | No character movement
 --]]
 
 local Players = game:GetService("Players")
@@ -13,7 +13,7 @@ local RunService = game:GetService("RunService")
 
 local Farming = false
 local ScriptActive = true
-local TouchAFKEnabled = true
+local AntiAFKEnabled = true
 local Minimized = false
 local Range = 30
 local WalkSpeed = 50
@@ -27,50 +27,35 @@ local fps = 0
 local lastFPSUpdate = tick()
 
 -- =============================================
--- TOUCH ANTI AFK (Mobile/PC) - Frequent activity
+-- ANTI AFK - Mobile + PC (No Movement)
 -- =============================================
-local function touchAFKLoop()
+local function antiAFKLoop()
     task.spawn(function()
         while ScriptActive do
-            if TouchAFKEnabled then
+            if AntiAFKEnabled then
                 pcall(function()
                     local char = LocalPlayer.Character
                     
                     if isMobile then
-                        -- Multiple random screen taps
-                        for i = 1, 2 do
-                            local x = math.random(50, 300)
-                            local y = math.random(100, 500)
-                            VirtualInputManager:SendTouchEvent(Vector2.new(x, y), 0, true, game)
-                            task.wait(0.03)
-                            VirtualInputManager:SendTouchEvent(Vector2.new(x, y), 0, false, game)
-                        end
+                        -- Mobile: Touch simulation + jump + camera
+                        local touchPos = Vector2.new(math.random(100, 300), math.random(100, 400))
+                        VirtualInputManager:SendTouchEvent(touchPos, 0, true, game)
+                        task.wait(0.05)
+                        VirtualInputManager:SendTouchEvent(touchPos, 0, false, game)
                         
-                        -- Jump
                         if char and char:FindFirstChild("Humanoid") then
                             char.Humanoid.Jump = true
                         end
                         
-                        -- Camera rotate
                         local camera = workspace.CurrentCamera
                         if camera then
-                            camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.3), math.rad(0.3), 0)
-                        end
-                        
-                        -- Tiny position wiggle
-                        if char and char:FindFirstChild("HumanoidRootPart") then
-                            local root = char.HumanoidRootPart
-                            root.CFrame = root.CFrame * CFrame.new(
-                                math.random(-1, 1) * 0.5,
-                                0,
-                                math.random(-1, 1) * 0.5
-                            )
+                            camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.5), math.rad(0.5), 0)
                         end
                     else
                         -- PC: Keyboard + jump + camera
-                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
                         task.wait(0.1)
-                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+                        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
                         
                         if char and char:FindFirstChild("Humanoid") then
                             char.Humanoid.Jump = true
@@ -83,7 +68,7 @@ local function touchAFKLoop()
                     end
                 end)
             end
-            task.wait(5) -- Every 5 seconds
+            task.wait(840) -- 14 minutes
         end
     end)
 end
@@ -186,7 +171,7 @@ StatusLabel.Size = UDim2.new(1, -20, 0, 18)
 StatusLabel.Position = UDim2.new(0, 10, 0, 62)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-StatusLabel.Text = "● Ready | Touch AFK: ON"
+StatusLabel.Text = "● Ready"
 StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
 StatusLabel.Font = Enum.Font.SourceSans
 StatusLabel.TextSize = 11
@@ -221,16 +206,16 @@ FarmBtn.Font = Enum.Font.SourceSansBold
 FarmBtn.TextSize = 13
 FarmBtn.Parent = MainFrame
 
-local TouchBtn = Instance.new("TextButton")
-TouchBtn.Size = UDim2.new(1, -20, 0, 28)
-TouchBtn.Position = UDim2.new(0, 10, 0, 143)
-TouchBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
-TouchBtn.BorderSizePixel = 0
-TouchBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-TouchBtn.Text = "👆 Touch AFK: ON"
-TouchBtn.Font = Enum.Font.SourceSans
-TouchBtn.TextSize = 12
-TouchBtn.Parent = MainFrame
+local AFKBtn = Instance.new("TextButton")
+AFKBtn.Size = UDim2.new(1, -20, 0, 28)
+AFKBtn.Position = UDim2.new(0, 10, 0, 143)
+AFKBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
+AFKBtn.BorderSizePixel = 0
+AFKBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AFKBtn.Text = "🔄 Anti AFK: ON"
+AFKBtn.Font = Enum.Font.SourceSans
+AFKBtn.TextSize = 12
+AFKBtn.Parent = MainFrame
 
 local Div3 = Instance.new("Frame")
 Div3.Size = UDim2.new(1, 0, 0, 1)
@@ -315,16 +300,15 @@ FarmBtn.MouseButton1Click:Connect(function()
     Farming = not Farming
     FarmBtn.Text = Farming and "⏹ STOP FARMING" or "▶ START FARMING"
     FarmBtn.BackgroundColor3 = Farming and Color3.fromRGB(150, 25, 25) or Color3.fromRGB(30, 130, 30)
-    StatusLabel.Text = (Farming and "● Farming" or "● Ready") .. " | Touch AFK: " .. (TouchAFKEnabled and "ON" or "OFF")
+    StatusLabel.Text = Farming and "● Farming" or "● Ready"
     StatusLabel.TextColor3 = Farming and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(180, 180, 180)
 end)
 
--- Touch AFK Toggle
-TouchBtn.MouseButton1Click:Connect(function()
-    TouchAFKEnabled = not TouchAFKEnabled
-    TouchBtn.Text = "👆 Touch AFK: " .. (TouchAFKEnabled and "ON" or "OFF")
-    TouchBtn.BackgroundColor3 = TouchAFKEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(60, 60, 60)
-    StatusLabel.Text = (Farming and "● Farming" or "● Ready") .. " | Touch AFK: " .. (TouchAFKEnabled and "ON" or "OFF")
+-- AFK Toggle
+AFKBtn.MouseButton1Click:Connect(function()
+    AntiAFKEnabled = not AntiAFKEnabled
+    AFKBtn.Text = "🔄 Anti AFK: " .. (AntiAFKEnabled and "ON" or "OFF")
+    AFKBtn.BackgroundColor3 = AntiAFKEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(60, 60, 60)
 end)
 
 -- Terminate
@@ -425,6 +409,6 @@ task.spawn(function()
 end)
 
 -- Start
-touchAFKLoop()
+antiAFKLoop()
 applyStats()
-print("Ready! by kibsss | Touch AFK Active")
+print("Ready! by kibsss")
