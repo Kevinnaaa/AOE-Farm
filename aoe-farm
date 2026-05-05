@@ -1,7 +1,7 @@
 --[[
     Sailor Piece - ALL IN ONE (Presentable UI)
-    AOE Farm + Anti AFK (Mobile/PC) + Speed 50 + Jump 75 + FOV 100
-    FPS & Ping Display | No character movement
+    AOE Farm + Anti AFK (PC Keys / Mobile Touch) + Speed 50 + Jump 75 + FOV 100
+    FPS & Ping Display | No movement, keypress/touch only
 --]]
 
 local Players = game:GetService("Players")
@@ -27,44 +27,24 @@ local fps = 0
 local lastFPSUpdate = tick()
 
 -- =============================================
--- ANTI AFK - Mobile + PC (No Movement)
+-- ANTI AFK - PC (Keys only) + Mobile (Touch only)
 -- =============================================
 local function antiAFKLoop()
     task.spawn(function()
         while ScriptActive do
             if AntiAFKEnabled then
                 pcall(function()
-                    local char = LocalPlayer.Character
-                    
                     if isMobile then
-                        -- Mobile: Touch simulation + jump + camera
+                        -- Mobile: Touch screen ONLY (like auto-clicker)
                         local touchPos = Vector2.new(math.random(100, 300), math.random(100, 400))
                         VirtualInputManager:SendTouchEvent(touchPos, 0, true, game)
                         task.wait(0.05)
                         VirtualInputManager:SendTouchEvent(touchPos, 0, false, game)
-                        
-                        if char and char:FindFirstChild("Humanoid") then
-                            char.Humanoid.Jump = true
-                        end
-                        
-                        local camera = workspace.CurrentCamera
-                        if camera then
-                            camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(0.5), math.rad(0.5), 0)
-                        end
                     else
-                        -- PC: Keyboard + jump + camera
+                        -- PC: Key press ONLY (W key, no movement)
                         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
                         task.wait(0.1)
                         VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
-                        
-                        if char and char:FindFirstChild("Humanoid") then
-                            char.Humanoid.Jump = true
-                        end
-                        
-                        local camera = workspace.CurrentCamera
-                        if camera then
-                            camera.CFrame = camera.CFrame * CFrame.Angles(0, 0.05, 0)
-                        end
                     end
                 end)
             end
@@ -113,7 +93,7 @@ HeaderText.Size = UDim2.new(0.6, 0, 1, 0)
 HeaderText.Position = UDim2.new(0, 12, 0, 0)
 HeaderText.BackgroundTransparency = 1
 HeaderText.TextColor3 = Color3.fromRGB(255, 255, 255)
-HeaderText.Text = "⚔️ SAILOR PIECE"
+HeaderText.Text = "⚔️ SAILOR PIECE by Maryyy"
 HeaderText.TextXAlignment = Enum.TextXAlignment.Left
 HeaderText.Font = Enum.Font.SourceSansBold
 HeaderText.TextSize = 14
