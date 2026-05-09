@@ -1,7 +1,7 @@
 --[[
     Sailor Piece - ALL IN ONE
     AOE Farm + Anti AFK (VirtualUser PC/Mobile) + Speed 50 + Jump 75 + FOV 100
-    FPS & Ping Display + Timer
+    FPS & Ping Display + Timer | Draggable Minimize Icon
 --]]
 
 -- Anti-AFK initialization
@@ -56,26 +56,30 @@ ScreenGui.Name = "AllInOne"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = game:GetService("CoreGui")
 
-local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 220, 0, 240)
-MainFrame.Position = UDim2.new(0, 10, 0, 80)
-MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-MainFrame.BorderSizePixel = 0
-MainFrame.Active = true
-MainFrame.Draggable = true
-MainFrame.Visible = true
-MainFrame.Parent = ScreenGui
-
+-- LARGE DRAGGABLE MINIMIZE BUTTON
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
+MinBtn.Size = UDim2.new(0, 50, 0, 50)
 MinBtn.Position = UDim2.new(0, 10, 0, 80)
 MinBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MinBtn.BorderSizePixel = 0
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinBtn.Text = "⚔️"
 MinBtn.Font = Enum.Font.SourceSansBold
-MinBtn.TextSize = 15
+MinBtn.TextSize = 22
+MinBtn.Active = true
+MinBtn.Draggable = true
 MinBtn.Parent = ScreenGui
+
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 220, 0, 258)
+MainFrame.Position = UDim2.new(0, 65, 0, 80)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
 
 local Header = Instance.new("Frame")
 Header.Size = UDim2.new(1, 0, 0, 35)
@@ -283,9 +287,6 @@ Footer.Font = Enum.Font.SourceSans
 Footer.TextSize = 9
 Footer.Parent = MainFrame
 
--- Update Frame Size
-MainFrame.Size = UDim2.new(0, 220, 0, 258)
-
 -- =============================================
 -- ANTI AFK - VirtualUser (Works PC + Mobile)
 -- =============================================
@@ -302,10 +303,22 @@ end)
 -- =============================================
 -- FUNCTIONS
 -- =============================================
+
+-- Minimize (larger icon, draggable)
 local function toggleMinimize()
     Minimized = not Minimized
     MainFrame.Visible = not Minimized
-    MinBtn.BackgroundColor3 = Minimized and Color3.fromRGB(30, 130, 30) or Color3.fromRGB(25, 25, 25)
+    if Minimized then
+        MinBtn.BackgroundColor3 = Color3.fromRGB(30, 130, 30)
+        MinBtn.Text = "⚔️"
+        MinBtn.Size = UDim2.new(0, 50, 0, 50)
+        MinBtn.TextSize = 22
+    else
+        MinBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+        MinBtn.Text = "⚔️"
+        MinBtn.Size = UDim2.new(0, 50, 0, 50)
+        MinBtn.TextSize = 22
+    end
 end
 MinBtn.MouseButton1Click:Connect(toggleMinimize)
 DashBtn.MouseButton1Click:Connect(toggleMinimize)
