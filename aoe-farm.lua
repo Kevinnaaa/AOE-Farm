@@ -1,7 +1,7 @@
 --[[
-    Sailor Piece - ALL IN ONE (RAYFIELD STYLE - FIXED)
+    Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO ICON)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
-    Permanent Stats | Terminate Button
+    Permanent Stats | FPS/Ping/Time on Main | Minimize to Draggable Icon
 --]]
 
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
@@ -15,7 +15,7 @@ local VirtualUser = game:GetService("VirtualUser")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
--- Permanent Settings (not changeable)
+-- Permanent Settings
 local PERMANENT = {
     Range = 30,
     WalkSpeed = 50,
@@ -26,9 +26,7 @@ local PERMANENT = {
 -- Toggle Settings
 local Settings = {
     Farming = false,
-    AutoClick = false,
     AntiAFK = true,
-    ClickSpeed = 0.1,
     Minimized = false
 }
 
@@ -46,6 +44,9 @@ if getgenv().SailorPieceLoaded then
     if game.CoreGui:FindFirstChild("SailorPieceGUI") then
         game.CoreGui.SailorPieceGUI:Destroy()
     end
+    if game.CoreGui:FindFirstChild("MinimizeIcon") then
+        game.CoreGui.MinimizeIcon:Destroy()
+    end
 end
 getgenv().SailorPieceLoaded = true
 
@@ -60,6 +61,7 @@ GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Main Container
 local Main = Instance.new("Frame")
+Main.Name = "MainFrame"
 Main.Size = UDim2.new(0, 500, 0, 320)
 Main.Position = UDim2.new(0.5, -250, 0.5, -160)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
@@ -71,6 +73,37 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = Main
 
+-- Minimize Icon (hidden by default)
+local MinimizeIcon = Instance.new("TextButton")
+MinimizeIcon.Name = "MinimizeIcon"
+MinimizeIcon.Size = UDim2.new(0, 45, 0, 45)
+MinimizeIcon.Position = UDim2.new(0, 10, 0, 80)
+MinimizeIcon.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MinimizeIcon.BorderSizePixel = 0
+MinimizeIcon.TextColor3 = Color3.fromRGB(255, 200, 0)
+MinimizeIcon.Text = "⚔️"
+MinimizeIcon.Font = Enum.Font.GothamBold
+MinimizeIcon.TextSize = 20
+MinimizeIcon.AutoButtonColor = false
+MinimizeIcon.Visible = false
+MinimizeIcon.Parent = GUI
+
+local IconCorner = Instance.new("UICorner")
+IconCorner.CornerRadius = UDim.new(0, 8)
+IconCorner.Parent = MinimizeIcon
+
+local IconGlow = Instance.new("Frame")
+IconGlow.Size = UDim2.new(1, 6, 1, 6)
+IconGlow.Position = UDim2.new(0, -3, 0, -3)
+IconGlow.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
+IconGlow.BackgroundTransparency = 0.7
+IconGlow.BorderSizePixel = 0
+IconGlow.Parent = MinimizeIcon
+
+local IconGlowCorner = Instance.new("UICorner")
+IconGlowCorner.CornerRadius = UDim.new(0, 10)
+IconGlowCorner.Parent = IconGlow
+
 -- Title Bar
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 32)
@@ -78,21 +111,58 @@ TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Main
 
+-- FPS (in title bar)
+local FPSDisplay = Instance.new("TextLabel")
+FPSDisplay.Size = UDim2.new(0, 55, 1, 0)
+FPSDisplay.Position = UDim2.new(0, 8, 0, 0)
+FPSDisplay.BackgroundTransparency = 1
+FPSDisplay.TextColor3 = Color3.fromRGB(0, 255, 100)
+FPSDisplay.Text = "FPS: --"
+FPSDisplay.TextXAlignment = Enum.TextXAlignment.Left
+FPSDisplay.Font = Enum.Font.GothamBold
+FPSDisplay.TextSize = 10
+FPSDisplay.Parent = TitleBar
+
+-- Ping (in title bar)
+local PingDisplay = Instance.new("TextLabel")
+PingDisplay.Size = UDim2.new(0, 65, 1, 0)
+PingDisplay.Position = UDim2.new(0, 60, 0, 0)
+PingDisplay.BackgroundTransparency = 1
+PingDisplay.TextColor3 = Color3.fromRGB(100, 200, 255)
+PingDisplay.Text = "Ping: --"
+PingDisplay.TextXAlignment = Enum.TextXAlignment.Left
+PingDisplay.Font = Enum.Font.GothamBold
+PingDisplay.TextSize = 10
+PingDisplay.Parent = TitleBar
+
+-- Time (in title bar)
+local TimerDisplay = Instance.new("TextLabel")
+TimerDisplay.Size = UDim2.new(0, 80, 1, 0)
+TimerDisplay.Position = UDim2.new(0, 128, 0, 0)
+TimerDisplay.BackgroundTransparency = 1
+TimerDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
+TimerDisplay.Text = "0:0:0"
+TimerDisplay.TextXAlignment = Enum.TextXAlignment.Left
+TimerDisplay.Font = Enum.Font.GothamBold
+TimerDisplay.TextSize = 10
+TimerDisplay.Parent = TitleBar
+
+-- Title Text
 local TitleText = Instance.new("TextLabel")
-TitleText.Size = UDim2.new(1, -50, 1, 0)
-TitleText.Position = UDim2.new(0, 15, 0, 0)
+TitleText.Size = UDim2.new(1, -280, 1, 0)
+TitleText.Position = UDim2.new(0, 210, 0, 0)
 TitleText.BackgroundTransparency = 1
-TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleText.Text = "sailor piece"
-TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.TextColor3 = Color3.fromRGB(180, 180, 180)
+TitleText.Text = "Sailor Piece by Maryyy "
+TitleText.TextXAlignment = Enum.TextXAlignment.Right
 TitleText.Font = Enum.Font.GothamBold
-TitleText.TextSize = 13
+TitleText.TextSize = 11
 TitleText.Parent = TitleBar
 
 -- Minimize Button
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, 30, 0, 30)
-MinBtn.Position = UDim2.new(1, -35, 0, 1)
+MinBtn.Size = UDim2.new(0, 28, 0, 28)
+MinBtn.Position = UDim2.new(1, -33, 0, 2)
 MinBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 MinBtn.BorderSizePixel = 0
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -207,7 +277,7 @@ end
 -- =============================================
 local function CreateSection(parent, title, yPos)
     local section = Instance.new("Frame")
-    section.Size = UDim2.new(1, -30, 0, 24)
+    section.Size = UDim2.new(1, -30, 0, 20)
     section.Position = UDim2.new(0, 15, 0, yPos)
     section.BackgroundTransparency = 1
     section.Parent = parent
@@ -220,8 +290,8 @@ local function CreateSection(parent, title, yPos)
     line.Parent = section
     
     local text = Instance.new("TextLabel")
-    text.Size = UDim2.new(1, 0, 0, 18)
-    text.Position = UDim2.new(0, 0, 0, 4)
+    text.Size = UDim2.new(1, 0, 0, 16)
+    text.Position = UDim2.new(0, 0, 0, 3)
     text.BackgroundTransparency = 1
     text.TextColor3 = Color3.fromRGB(120, 120, 120)
     text.Text = title
@@ -326,14 +396,14 @@ end
 
 local function CreateInfoLabel(parent, text, yPos, color)
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -30, 0, 20)
+    label.Size = UDim2.new(1, -30, 0, 18)
     label.Position = UDim2.new(0, 15, 0, yPos)
     label.BackgroundTransparency = 1
     label.TextColor3 = color or Color3.fromRGB(200, 200, 200)
     label.Text = text
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Font = Enum.Font.Gotham
-    label.TextSize = 11
+    label.TextSize = 10
     label.Parent = parent
     return label
 end
@@ -348,11 +418,11 @@ local SettingsPage = CreateTab("Settings", "⚙️", 3)
 -- =============================================
 -- FARM TAB
 -- =============================================
-CreateSection(FarmPage, "MAIN", 10)
+CreateSection(FarmPage, "CONTROLS", 10)
 
 local FarmStatus = Instance.new("TextLabel")
-FarmStatus.Size = UDim2.new(1, -30, 0, 18)
-FarmStatus.Position = UDim2.new(0, 15, 0, 38)
+FarmStatus.Size = UDim2.new(1, -30, 0, 16)
+FarmStatus.Position = UDim2.new(0, 15, 0, 34)
 FarmStatus.BackgroundTransparency = 1
 FarmStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
 FarmStatus.Text = "● Idle"
@@ -361,33 +431,29 @@ FarmStatus.Font = Enum.Font.Gotham
 FarmStatus.TextSize = 10
 FarmStatus.Parent = FarmPage
 
-CreateToggle(FarmPage, "AOE Farming", false, 62, function(state)
+CreateToggle(FarmPage, "AOE Farming", false, 54, function(state)
     Settings.Farming = state
     FarmStatus.Text = state and "● Farming" or "● Idle"
     FarmStatus.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
 end)
 
-CreateToggle(FarmPage, "Auto Click", false, 96, function(state)
-    Settings.AutoClick = state
-end)
-
-CreateToggle(FarmPage, "Anti-AFK", true, 130, function(state)
+CreateToggle(FarmPage, "Anti-AFK", true, 88, function(state)
     Settings.AntiAFK = state
 end)
 
-CreateSection(FarmPage, "STATS INFO", 170)
+CreateSection(FarmPage, "PERMANENT STATS", 130)
 
-CreateInfoLabel(FarmPage, "Range: 30 (Fixed)", 198, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(FarmPage, "Speed: 50 (Fixed)", 218, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(FarmPage, "Jump: 75 (Fixed)", 238, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(FarmPage, "FOV: 100 (Fixed)", 258, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "Farm Range: 30", 154, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "Walk Speed: 50", 174, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "Jump Power: 75", 194, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "FOV: 100", 214, Color3.fromRGB(255, 200, 0))
 
--- NPC Counter (bottom of farm page)
+-- NPC Counter
 local NPCCount = Instance.new("TextLabel")
 NPCCount.Size = UDim2.new(1, -30, 0, 14)
-NPCCount.Position = UDim2.new(0, 15, 0, 278)
+NPCCount.Position = UDim2.new(0, 15, 0, 248)
 NPCCount.BackgroundTransparency = 1
-NPCCount.TextColor3 = Color3.fromRGB(120, 120, 120)
+NPCCount.TextColor3 = Color3.fromRGB(140, 140, 140)
 NPCCount.Text = "NPCs in range: 0"
 NPCCount.TextXAlignment = Enum.TextXAlignment.Left
 NPCCount.Font = Enum.Font.Gotham
@@ -401,7 +467,7 @@ CreateSection(PlayerPage, "CHARACTER INFO", 10)
 
 local PlayerName = Instance.new("TextLabel")
 PlayerName.Size = UDim2.new(1, -30, 0, 20)
-PlayerName.Position = UDim2.new(0, 15, 0, 38)
+PlayerName.Position = UDim2.new(0, 15, 0, 34)
 PlayerName.BackgroundTransparency = 1
 PlayerName.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlayerName.Text = "👤 " .. LocalPlayer.Name
@@ -411,8 +477,8 @@ PlayerName.TextSize = 12
 PlayerName.Parent = PlayerPage
 
 local PlayerStats = Instance.new("Frame")
-PlayerStats.Size = UDim2.new(1, -30, 0, 100)
-PlayerStats.Position = UDim2.new(0, 15, 0, 68)
+PlayerStats.Size = UDim2.new(1, -30, 0, 110)
+PlayerStats.Position = UDim2.new(0, 15, 0, 62)
 PlayerStats.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 PlayerStats.BorderSizePixel = 0
 PlayerStats.Parent = PlayerPage
@@ -434,7 +500,7 @@ StatsText.TextSize = 10
 StatsText.TextWrapped = true
 StatsText.Parent = PlayerStats
 
-CreateButton(PlayerPage, "🔍 Scan Character Data", 178, function()
+CreateButton(PlayerPage, "🔍 Scan Character Data", 182, function()
     StatsText.Text = "🔍 Scanning...\n"
     local found = {}
     
@@ -474,11 +540,11 @@ CreateButton(PlayerPage, "🔍 Scan Character Data", 178, function()
     end
 end)
 
-CreateSection(PlayerPage, "HEALTH", 220)
+CreateSection(PlayerPage, "HEALTH", 222)
 
 local HealthBarBg = Instance.new("Frame")
 HealthBarBg.Size = UDim2.new(1, -30, 0, 20)
-HealthBarBg.Position = UDim2.new(0, 15, 0, 248)
+HealthBarBg.Position = UDim2.new(0, 15, 0, 246)
 HealthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 HealthBarBg.BorderSizePixel = 0
 HealthBarBg.Parent = PlayerPage
@@ -509,46 +575,91 @@ HealthText.Parent = HealthBar
 -- =============================================
 -- SETTINGS TAB
 -- =============================================
-CreateSection(SettingsPage, "STATUS", 10)
+CreateSection(SettingsPage, "PERMANENT STATS", 10)
 
-local FPSDisplay = CreateInfoLabel(SettingsPage, "FPS: --", 38, Color3.fromRGB(0, 255, 100))
-local PingDisplay = CreateInfoLabel(SettingsPage, "Ping: --ms", 58, Color3.fromRGB(100, 200, 255))
-local TimerDisplay = CreateInfoLabel(SettingsPage, "Runtime: 0:0:0", 78, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(SettingsPage, "Farm Range: 30", 34, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(SettingsPage, "Walk Speed: 50", 54, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(SettingsPage, "Jump Power: 75", 74, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(SettingsPage, "FOV: 100", 94, Color3.fromRGB(255, 200, 0))
 
-CreateSection(SettingsPage, "PERMANENT STATS", 108)
+CreateSection(SettingsPage, "TERMINATE", 126)
 
-CreateInfoLabel(SettingsPage, "Farm Range: 30", 136, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(SettingsPage, "Walk Speed: 50", 156, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(SettingsPage, "Jump Power: 75", 176, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(SettingsPage, "FOV: 100", 196, Color3.fromRGB(255, 200, 0))
-
-CreateSection(SettingsPage, "TERMINATE", 226)
-
-CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 254, function()
+CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 150, function()
     ScriptActive = false
     Settings.Farming = false
-    Settings.AutoClick = false
     GUI:Destroy()
 end)
 
 -- =============================================
--- MINIMIZE
+-- MINIMIZE TO ICON FUNCTIONALITY
 -- =============================================
-local mainSize = UDim2.new(0, 500, 0, 320)
-local minimizedSize = UDim2.new(0, 500, 0, 32)
+local function showMain()
+    Main.Visible = true
+    MinimizeIcon.Visible = false
+    Settings.Minimized = false
+end
+
+local function showIcon()
+    Main.Visible = false
+    MinimizeIcon.Visible = true
+    Settings.Minimized = true
+end
 
 MinBtn.MouseButton1Click:Connect(function()
-    Settings.Minimized = not Settings.Minimized
-    if Settings.Minimized then
-        Main.Size = minimizedSize
-        MinBtn.Text = "+"
-    else
-        Main.Size = mainSize
-        MinBtn.Text = "—"
+    showIcon()
+end)
+
+MinimizeIcon.MouseButton1Click:Connect(function()
+    showMain()
+end)
+
+-- Make the icon draggable
+local iconDragging = false
+local iconDragStart
+local iconStartPos
+
+MinimizeIcon.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        iconDragging = true
+        iconDragStart = input.Position
+        iconStartPos = MinimizeIcon.Position
     end
 end)
 
--- Draggable
+MinimizeIcon.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if iconDragging and (input.Position - iconDragStart).Magnitude < 5 then
+            -- It was a click, not a drag
+            showMain()
+        end
+        iconDragging = false
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - iconDragStart
+        MinimizeIcon.Position = UDim2.new(iconStartPos.X.Scale, iconStartPos.X.Offset + delta.X, iconStartPos.Y.Scale, iconStartPos.Y.Offset + delta.Y)
+    end
+end)
+
+-- Glow pulse animation for the icon
+task.spawn(function()
+    while ScriptActive do
+        if MinimizeIcon.Visible then
+            local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+            local tween1 = TweenService:Create(IconGlow, tweenInfo, {BackgroundTransparency = 0.5})
+            local tween2 = TweenService:Create(IconGlow, tweenInfo, {BackgroundTransparency = 0.85})
+            tween1:Play()
+            tween1.Completed:Connect(function()
+                tween2:Play()
+            end)
+        end
+        task.wait(1.6)
+    end
+end)
+
+-- Main window draggable
 local dragActive = false
 local dragInput
 local dragStart
@@ -628,7 +739,7 @@ task.spawn(function()
         saniye = saniye + 1
         if saniye >= 60 then saniye = 0; dakika = dakika + 1 end
         if dakika >= 60 then dakika = 0; saat = saat + 1 end
-        TimerDisplay.Text = "Runtime: " .. saat .. ":" .. dakika .. ":" .. saniye
+        TimerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
         task.wait(1)
     end
 end)
@@ -695,7 +806,7 @@ task.spawn(function()
     end
 end)
 
--- AOE Farm (Uses PERMANENT.Range)
+-- AOE Farm
 task.spawn(function()
     while ScriptActive do
         if Settings.Farming then
@@ -734,18 +845,4 @@ task.spawn(function()
     end
 end)
 
--- Auto Click
-task.spawn(function()
-    while ScriptActive do
-        if Settings.AutoClick then
-            pcall(function()
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                task.wait(0.05)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-            end)
-        end
-        task.wait(Settings.ClickSpeed)
-    end
-end)
-
-print("✅ Sailor Piece GUI Loaded! | Range:30 | Speed:50 | Jump:75 | FOV:100")
+print("✅ Sailor Piece GUI Loaded! | FPS/Ping/Time on Title Bar | Minimize to Icon")
