@@ -15,7 +15,6 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local TouchInputService = game:GetService("TouchInputService") -- Mobile touch support
 
 -- Detect platform
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -65,7 +64,6 @@ local function scanBounty()
     local bounty = nil
     
     pcall(function()
-        -- Check leaderstats first
         local leaderstats = LocalPlayer:FindFirstChild("leaderstats") or LocalPlayer:FindFirstChild("stats") or LocalPlayer:FindFirstChild("Data")
         if leaderstats then
             for _, stat in pairs(leaderstats:GetChildren()) do
@@ -82,7 +80,6 @@ local function scanBounty()
             end
         end
         
-        -- Check PlayerGui for bounty text
         if not bounty then
             local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
             if playerGui then
@@ -108,7 +105,6 @@ local function scanBounty()
             end
         end
         
-        -- Check workspace for bounty board/display
         if not bounty then
             for _, child in pairs(Workspace:GetChildren()) do
                 if child:IsA("Model") and child:FindFirstChild("Head") then
@@ -163,36 +159,25 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = Main
 
--- Minimize Icon (hidden by default)
+-- Minimize Icon (RED, NO GLOW, NOT ANIMATED)
 local MinimizeIcon = Instance.new("TextButton")
 MinimizeIcon.Name = "MinimizeIcon"
-MinimizeIcon.Size = UDim2.new(0, isMobile and 50 or 45, 0, isMobile and 50 or 45)
-MinimizeIcon.Position = UDim2.new(0, 10, 0, isMobile and 120 or 80)
-MinimizeIcon.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MinimizeIcon.Size = UDim2.new(0, isMobile and 55 or 45, 0, isMobile and 55 or 45)
+MinimizeIcon.Position = UDim2.new(0, 10, 0, isMobile and 140 or 80)
+MinimizeIcon.BackgroundColor3 = Color3.fromRGB(180, 25, 25)
 MinimizeIcon.BorderSizePixel = 0
-MinimizeIcon.TextColor3 = Color3.fromRGB(255, 200, 0)
+MinimizeIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinimizeIcon.Text = "⚔️"
 MinimizeIcon.Font = Enum.Font.GothamBold
-MinimizeIcon.TextSize = isMobile and 22 or 20
+MinimizeIcon.TextSize = isMobile and 24 or 20
 MinimizeIcon.AutoButtonColor = false
 MinimizeIcon.Visible = false
+MinimizeIcon.Active = true
 MinimizeIcon.Parent = GUI
 
 local IconCorner = Instance.new("UICorner")
 IconCorner.CornerRadius = UDim.new(0, 8)
 IconCorner.Parent = MinimizeIcon
-
-local IconGlow = Instance.new("Frame")
-IconGlow.Size = UDim2.new(1, 6, 1, 6)
-IconGlow.Position = UDim2.new(0, -3, 0, -3)
-IconGlow.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-IconGlow.BackgroundTransparency = 0.7
-IconGlow.BorderSizePixel = 0
-IconGlow.Parent = MinimizeIcon
-
-local IconGlowCorner = Instance.new("UICorner")
-IconGlowCorner.CornerRadius = UDim.new(0, 10)
-IconGlowCorner.Parent = IconGlow
 
 -- Title Bar
 local TitleBar = Instance.new("Frame")
@@ -260,6 +245,7 @@ MinBtn.Text = "—"
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.TextSize = isMobile and 16 or 14
 MinBtn.AutoButtonColor = false
+MinBtn.Active = true
 MinBtn.Parent = TitleBar
 
 local MinCorner = Instance.new("UICorner")
@@ -339,6 +325,7 @@ local function CreateTab(name, icon, index)
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = btnFont
     btn.AutoButtonColor = false
+    btn.Active = true
     btn.Parent = Sidebar
     
     local btnCorner = Instance.new("UICorner")
@@ -363,7 +350,6 @@ local function CreateTab(name, icon, index)
         page.Visible = true
     end)
     
-    -- Touch support for mobile
     btn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch then
             for i = 1, #TabButtons do
@@ -448,6 +434,7 @@ local function CreateToggle(parent, title, default, yPos, callback)
     switch.BorderSizePixel = 0
     switch.Text = ""
     switch.AutoButtonColor = false
+    switch.Active = true
     switch.Parent = bg
     
     local switchCorner = Instance.new("UICorner")
@@ -477,7 +464,6 @@ local function CreateToggle(parent, title, default, yPos, callback)
     end
     
     switch.MouseButton1Click:Connect(toggleSwitch)
-    -- Touch support
     switch.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch then
             toggleSwitch()
@@ -499,6 +485,7 @@ local function CreateButton(parent, title, yPos, callback)
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = isMobile and 10 or 11
     btn.AutoButtonColor = false
+    btn.Active = true
     btn.Parent = parent
     
     local btnCorner = Instance.new("UICorner")
@@ -506,7 +493,6 @@ local function CreateButton(parent, title, yPos, callback)
     btnCorner.Parent = btn
     
     btn.MouseButton1Click:Connect(callback)
-    -- Touch support
     btn.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.Touch then
             callback()
@@ -572,7 +558,6 @@ end)
 
 CreateSection(FarmPage, "INFO", isMobile and 138 or 130)
 
--- Bounty Display
 local BountyDisplay = Instance.new("TextLabel")
 BountyDisplay.Size = UDim2.new(1, -30, 0, isMobile and 24 or 22)
 BountyDisplay.Position = UDim2.new(0, 15, 0, isMobile and 162 or 154)
@@ -589,7 +574,6 @@ local BountyCorner = Instance.new("UICorner")
 BountyCorner.CornerRadius = UDim.new(0, 4)
 BountyCorner.Parent = BountyDisplay
 
--- NPC Counter
 local NPCCount = Instance.new("TextLabel")
 NPCCount.Size = UDim2.new(1, -30, 0, 14)
 NPCCount.Position = UDim2.new(0, 15, 0, isMobile and 196 or 186)
@@ -617,7 +601,6 @@ PlayerName.Font = Enum.Font.GothamBold
 PlayerName.TextSize = 12
 PlayerName.Parent = PlayerPage
 
--- Bounty big display on Player tab
 local PlayerBounty = Instance.new("Frame")
 PlayerBounty.Size = UDim2.new(1, -30, 0, 40)
 PlayerBounty.Position = UDim2.new(0, 15, 0, 60)
@@ -719,66 +702,48 @@ end
 MinBtn.MouseButton1Click:Connect(showIcon)
 MinimizeIcon.MouseButton1Click:Connect(showMain)
 
--- Touch support for minimize buttons
 MinBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
         showIcon()
     end
 end)
-MinimizeIcon.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        showMain()
-    end
-end)
 
--- Icon draggable (works with both mouse and touch)
+-- Icon: tap to restore, drag to move (works on mobile)
 local iconDragging = false
 local iconDragStart
 local iconStartPos
-
-local function startIconDrag(input)
-    iconDragging = true
-    iconDragStart = input.Position
-    iconStartPos = MinimizeIcon.Position
-end
+local iconMoved = false
 
 MinimizeIcon.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        startIconDrag(input)
-    end
-end)
-
-MinimizeIcon.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        if iconDragging and (input.Position - iconDragStart).Magnitude < 5 then
-            showMain()
-        end
-        iconDragging = false
+        iconDragging = true
+        iconMoved = false
+        iconDragStart = input.Position
+        iconStartPos = MinimizeIcon.Position
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
     if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - iconDragStart
+        if math.abs(delta.X) > 3 or math.abs(delta.Y) > 3 then
+            iconMoved = true
+        end
         MinimizeIcon.Position = UDim2.new(iconStartPos.X.Scale, iconStartPos.X.Offset + delta.X, iconStartPos.Y.Scale, iconStartPos.Y.Offset + delta.Y)
     end
 end)
 
--- Glow pulse
-task.spawn(function()
-    while ScriptActive do
-        if MinimizeIcon.Visible then
-            local tweenInfo = TweenInfo.new(0.8, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-            local tween1 = TweenService:Create(IconGlow, tweenInfo, {BackgroundTransparency = 0.5})
-            local tween2 = TweenService:Create(IconGlow, tweenInfo, {BackgroundTransparency = 0.85})
-            tween1:Play()
-            tween1.Completed:Connect(function() tween2:Play() end)
+MinimizeIcon.InputEnded:Connect(function(input)
+    if iconDragging then
+        if not iconMoved then
+            -- It was a tap, restore window
+            showMain()
         end
-        task.wait(1.6)
+        iconDragging = false
     end
 end)
 
--- Main window draggable (works with both mouse and touch)
+-- Main window draggable (mouse + touch)
 local dragActive = false
 local dragInput
 local dragStart
@@ -812,7 +777,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- =============================================
--- ANTI AFK (works on mobile too)
+-- ANTI AFK
 -- =============================================
 LocalPlayer.Idled:connect(function()
     if Settings.AntiAFK then
