@@ -601,14 +601,6 @@ NPCCount.Font = Enum.Font.Gotham
 NPCCount.TextSize = 9
 NPCCount.Parent = FarmPage
 
-CreateSection(FarmPage, "PERMANENT STATS", isMobile and 218 or 210)
-
-local statsStartY = isMobile and 242 or 234
-CreateInfoLabel(FarmPage, "Farm Range: 30", statsStartY, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(FarmPage, "Walk Speed: 50", statsStartY + 20, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(FarmPage, "Jump Power: 75", statsStartY + 40, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(FarmPage, "FOV: 100", statsStartY + 60, Color3.fromRGB(255, 200, 0))
-
 -- =============================================
 -- PLAYER TAB
 -- =============================================
