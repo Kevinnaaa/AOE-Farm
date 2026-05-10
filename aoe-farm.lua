@@ -1,7 +1,7 @@
 --[[
     Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO ICON)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
-    Permanent Stats | FPS/Ping/Time on Main | Minimize to Draggable Icon
+    Permanent Stats | FPS/Ping/Time on Title Bar | Auto Bounty Display
 --]]
 
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
@@ -38,6 +38,9 @@ local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
 -- Timer
 local saniye, dakika, saat = 0, 0, 0
 
+-- Bounty
+local CurrentBounty = "Searching..."
+
 -- Clean up
 if getgenv().SailorPieceLoaded then
     getgenv().SailorPieceLoaded = false
@@ -49,6 +52,82 @@ if getgenv().SailorPieceLoaded then
     end
 end
 getgenv().SailorPieceLoaded = true
+
+-- =============================================
+-- BOUNTY SCANNER
+-- =============================================
+local function scanBounty()
+    local bounty = nil
+    
+    pcall(function()
+        -- Check leaderstats first
+        local leaderstats = LocalPlayer:FindFirstChild("leaderstats") or LocalPlayer:FindFirstChild("stats") or LocalPlayer:FindFirstChild("Data")
+        if leaderstats then
+            for _, stat in pairs(leaderstats:GetChildren()) do
+                local name = string.lower(stat.Name)
+                if string.find(name, "bounty") or string.find(name, "beli") then
+                    if stat:IsA("IntValue") or stat:IsA("NumberValue") then
+                        bounty = tostring(stat.Value)
+                        break
+                    elseif stat:IsA("StringValue") then
+                        bounty = stat.Value
+                        break
+                    end
+                end
+            end
+        end
+        
+        -- Check PlayerGui for bounty text
+        if not bounty then
+            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
+            if playerGui then
+                for _, child in pairs(playerGui:GetDescendants()) do
+                    if child:IsA("TextLabel") or child:IsA("TextButton") then
+                        local text = child.Text or ""
+                        local textLower = string.lower(text)
+                        if string.find(textLower, "bounty") then
+                            -- Try to extract just the number/value
+                            local number = string.match(text, "[%d,]+")
+                            if number then
+                                bounty = number
+                                break
+                            else
+                                -- Just use the text cleaned up
+                                local clean = text:gsub("Bounty", ""):gsub("bounty", ""):gsub("%s*:%s*", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+                                if clean ~= "" then
+                                    bounty = clean
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Check workspace for bounty board/display
+        if not bounty then
+            for _, child in pairs(Workspace:GetChildren()) do
+                if child:IsA("Model") and child:FindFirstChild("Head") then
+                    local billboard = child.Head:FindFirstChild("BillboardGui")
+                    if billboard then
+                        for _, element in pairs(billboard:GetDescendants()) do
+                            if element:IsA("TextLabel") and string.find(string.lower(element.Text or ""), "bounty") then
+                                local number = string.match(element.Text, "[%d,]+")
+                                if number then
+                                    bounty = number
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    
+    return bounty
+end
 
 -- =============================================
 -- GUI CREATION
@@ -111,7 +190,7 @@ TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Main
 
--- FPS (in title bar)
+-- FPS
 local FPSDisplay = Instance.new("TextLabel")
 FPSDisplay.Size = UDim2.new(0, 55, 1, 0)
 FPSDisplay.Position = UDim2.new(0, 8, 0, 0)
@@ -123,7 +202,7 @@ FPSDisplay.Font = Enum.Font.GothamBold
 FPSDisplay.TextSize = 10
 FPSDisplay.Parent = TitleBar
 
--- Ping (in title bar)
+-- Ping
 local PingDisplay = Instance.new("TextLabel")
 PingDisplay.Size = UDim2.new(0, 65, 1, 0)
 PingDisplay.Position = UDim2.new(0, 60, 0, 0)
@@ -135,7 +214,7 @@ PingDisplay.Font = Enum.Font.GothamBold
 PingDisplay.TextSize = 10
 PingDisplay.Parent = TitleBar
 
--- Time (in title bar)
+-- Time
 local TimerDisplay = Instance.new("TextLabel")
 TimerDisplay.Size = UDim2.new(0, 80, 1, 0)
 TimerDisplay.Position = UDim2.new(0, 128, 0, 0)
@@ -147,13 +226,13 @@ TimerDisplay.Font = Enum.Font.GothamBold
 TimerDisplay.TextSize = 10
 TimerDisplay.Parent = TitleBar
 
--- Title Text
+-- Title
 local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -280, 1, 0)
 TitleText.Position = UDim2.new(0, 210, 0, 0)
 TitleText.BackgroundTransparency = 1
 TitleText.TextColor3 = Color3.fromRGB(180, 180, 180)
-TitleText.Text = "Sailor Piece by Maryyy "
+TitleText.Text = "sailor piece"
 TitleText.TextXAlignment = Enum.TextXAlignment.Right
 TitleText.Font = Enum.Font.GothamBold
 TitleText.TextSize = 11
@@ -441,17 +520,29 @@ CreateToggle(FarmPage, "Anti-AFK", true, 88, function(state)
     Settings.AntiAFK = state
 end)
 
-CreateSection(FarmPage, "PERMANENT STATS", 130)
+CreateSection(FarmPage, "INFO", 130)
 
-CreateInfoLabel(FarmPage, "Farm Range: 30", 154, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(FarmPage, "Walk Speed: 50", 174, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(FarmPage, "Jump Power: 75", 194, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(FarmPage, "FOV: 100", 214, Color3.fromRGB(255, 200, 0))
+-- Bounty Display (permanent, auto-updating)
+local BountyDisplay = Instance.new("TextLabel")
+BountyDisplay.Size = UDim2.new(1, -30, 0, 22)
+BountyDisplay.Position = UDim2.new(0, 15, 0, 154)
+BountyDisplay.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+BountyDisplay.BorderSizePixel = 0
+BountyDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
+BountyDisplay.Text = "💰 Bounty: Searching..."
+BountyDisplay.TextXAlignment = Enum.TextXAlignment.Left
+BountyDisplay.Font = Enum.Font.GothamBold
+BountyDisplay.TextSize = 11
+BountyDisplay.Parent = FarmPage
+
+local BountyCorner = Instance.new("UICorner")
+BountyCorner.CornerRadius = UDim.new(0, 4)
+BountyCorner.Parent = BountyDisplay
 
 -- NPC Counter
 local NPCCount = Instance.new("TextLabel")
 NPCCount.Size = UDim2.new(1, -30, 0, 14)
-NPCCount.Position = UDim2.new(0, 15, 0, 248)
+NPCCount.Position = UDim2.new(0, 15, 0, 186)
 NPCCount.BackgroundTransparency = 1
 NPCCount.TextColor3 = Color3.fromRGB(140, 140, 140)
 NPCCount.Text = "NPCs in range: 0"
@@ -459,6 +550,13 @@ NPCCount.TextXAlignment = Enum.TextXAlignment.Left
 NPCCount.Font = Enum.Font.Gotham
 NPCCount.TextSize = 9
 NPCCount.Parent = FarmPage
+
+CreateSection(FarmPage, "PERMANENT STATS", 210)
+
+CreateInfoLabel(FarmPage, "Farm Range: 30", 234, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "Walk Speed: 50", 254, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "Jump Power: 75", 274, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "FOV: 100", 294, Color3.fromRGB(255, 200, 0))
 
 -- =============================================
 -- PLAYER TAB
@@ -476,75 +574,45 @@ PlayerName.Font = Enum.Font.GothamBold
 PlayerName.TextSize = 12
 PlayerName.Parent = PlayerPage
 
-local PlayerStats = Instance.new("Frame")
-PlayerStats.Size = UDim2.new(1, -30, 0, 110)
-PlayerStats.Position = UDim2.new(0, 15, 0, 62)
-PlayerStats.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-PlayerStats.BorderSizePixel = 0
-PlayerStats.Parent = PlayerPage
+-- Bounty big display on Player tab
+local PlayerBounty = Instance.new("Frame")
+PlayerBounty.Size = UDim2.new(1, -30, 0, 40)
+PlayerBounty.Position = UDim2.new(0, 15, 0, 60)
+PlayerBounty.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+PlayerBounty.BorderSizePixel = 0
+PlayerBounty.Parent = PlayerPage
 
-local StatsCorner = Instance.new("UICorner")
-StatsCorner.CornerRadius = UDim.new(0, 4)
-StatsCorner.Parent = PlayerStats
+local PlayerBountyCorner = Instance.new("UICorner")
+PlayerBountyCorner.CornerRadius = UDim.new(0, 4)
+PlayerBountyCorner.Parent = PlayerBounty
 
-local StatsText = Instance.new("TextLabel")
-StatsText.Size = UDim2.new(1, -20, 1, -10)
-StatsText.Position = UDim2.new(0, 10, 0, 5)
-StatsText.BackgroundTransparency = 1
-StatsText.TextColor3 = Color3.fromRGB(200, 200, 200)
-StatsText.Text = "No data scanned yet..."
-StatsText.TextXAlignment = Enum.TextXAlignment.Left
-StatsText.TextYAlignment = Enum.TextYAlignment.Top
-StatsText.Font = Enum.Font.Gotham
-StatsText.TextSize = 10
-StatsText.TextWrapped = true
-StatsText.Parent = PlayerStats
+local PlayerBountyLabel = Instance.new("TextLabel")
+PlayerBountyLabel.Size = UDim2.new(1, -20, 0, 14)
+PlayerBountyLabel.Position = UDim2.new(0, 10, 0, 5)
+PlayerBountyLabel.BackgroundTransparency = 1
+PlayerBountyLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+PlayerBountyLabel.Text = "BOUNTY"
+PlayerBountyLabel.TextXAlignment = Enum.TextXAlignment.Left
+PlayerBountyLabel.Font = Enum.Font.GothamBold
+PlayerBountyLabel.TextSize = 8
+PlayerBountyLabel.Parent = PlayerBounty
 
-CreateButton(PlayerPage, "🔍 Scan Character Data", 182, function()
-    StatsText.Text = "🔍 Scanning...\n"
-    local found = {}
-    
-    pcall(function()
-        local leaderstats = LocalPlayer:FindFirstChild("leaderstats") or LocalPlayer:FindFirstChild("stats") or LocalPlayer:FindFirstChild("Data")
-        if leaderstats then
-            table.insert(found, "📊 Stats:")
-            for _, stat in pairs(leaderstats:GetChildren()) do
-                if stat:IsA("IntValue") or stat:IsA("NumberValue") or stat:IsA("StringValue") then
-                    table.insert(found, "  • " .. stat.Name .. ": " .. tostring(stat.Value))
-                end
-            end
-        end
-        
-        local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-        if playerGui then
-            for _, child in pairs(playerGui:GetDescendants()) do
-                if child:IsA("TextLabel") or child:IsA("TextButton") then
-                    local text = child.Text or ""
-                    if string.find(text, "Bounty") or string.find(text, "Melee") or string.find(text, "Sword") 
-                    or string.find(text, "Race") or string.find(text, "Level") or string.find(text, "Fruit")
-                    or string.find(text, "Devil") or string.find(text, "Beli") then
-                        local clean = text:gsub("\n", " | "):gsub("%s+", " ")
-                        if #clean < 60 then
-                            table.insert(found, "📋 " .. clean)
-                        end
-                    end
-                end
-            end
-        end
-    end)
-    
-    if #found > 0 then
-        StatsText.Text = table.concat(found, "\n")
-    else
-        StatsText.Text = "❌ No data found.\nOpen game menu & try again."
-    end
-end)
+local PlayerBountyValue = Instance.new("TextLabel")
+PlayerBountyValue.Size = UDim2.new(1, -20, 0, 18)
+PlayerBountyValue.Position = UDim2.new(0, 10, 0, 18)
+PlayerBountyValue.BackgroundTransparency = 1
+PlayerBountyValue.TextColor3 = Color3.fromRGB(255, 200, 0)
+PlayerBountyValue.Text = "Searching..."
+PlayerBountyValue.TextXAlignment = Enum.TextXAlignment.Left
+PlayerBountyValue.Font = Enum.Font.GothamBold
+PlayerBountyValue.TextSize = 13
+PlayerBountyValue.Parent = PlayerBounty
 
-CreateSection(PlayerPage, "HEALTH", 222)
+CreateSection(PlayerPage, "HEALTH", 112)
 
 local HealthBarBg = Instance.new("Frame")
 HealthBarBg.Size = UDim2.new(1, -30, 0, 20)
-HealthBarBg.Position = UDim2.new(0, 15, 0, 246)
+HealthBarBg.Position = UDim2.new(0, 15, 0, 136)
 HealthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 HealthBarBg.BorderSizePixel = 0
 HealthBarBg.Parent = PlayerPage
@@ -591,7 +659,7 @@ CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 150, function()
 end)
 
 -- =============================================
--- MINIMIZE TO ICON FUNCTIONALITY
+-- MINIMIZE TO ICON
 -- =============================================
 local function showMain()
     Main.Visible = true
@@ -605,15 +673,10 @@ local function showIcon()
     Settings.Minimized = true
 end
 
-MinBtn.MouseButton1Click:Connect(function()
-    showIcon()
-end)
+MinBtn.MouseButton1Click:Connect(showIcon)
+MinimizeIcon.MouseButton1Click:Connect(showMain)
 
-MinimizeIcon.MouseButton1Click:Connect(function()
-    showMain()
-end)
-
--- Make the icon draggable
+-- Icon draggable
 local iconDragging = false
 local iconDragStart
 local iconStartPos
@@ -629,7 +692,6 @@ end)
 MinimizeIcon.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 then
         if iconDragging and (input.Position - iconDragStart).Magnitude < 5 then
-            -- It was a click, not a drag
             showMain()
         end
         iconDragging = false
@@ -643,7 +705,7 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Glow pulse animation for the icon
+-- Glow pulse
 task.spawn(function()
     while ScriptActive do
         if MinimizeIcon.Visible then
@@ -651,9 +713,7 @@ task.spawn(function()
             local tween1 = TweenService:Create(IconGlow, tweenInfo, {BackgroundTransparency = 0.5})
             local tween2 = TweenService:Create(IconGlow, tweenInfo, {BackgroundTransparency = 0.85})
             tween1:Play()
-            tween1.Completed:Connect(function()
-                tween2:Play()
-            end)
+            tween1.Completed:Connect(function() tween2:Play() end)
         end
         task.wait(1.6)
     end
@@ -741,6 +801,22 @@ task.spawn(function()
         if dakika >= 60 then dakika = 0; saat = saat + 1 end
         TimerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
         task.wait(1)
+    end
+end)
+
+-- Bounty (auto-update every 3 seconds)
+task.spawn(function()
+    while ScriptActive do
+        local bounty = scanBounty()
+        if bounty then
+            CurrentBounty = bounty
+            BountyDisplay.Text = "💰 Bounty: " .. bounty
+            PlayerBountyValue.Text = bounty
+        else
+            BountyDisplay.Text = "💰 Bounty: Not found"
+            PlayerBountyValue.Text = "Not found"
+        end
+        task.wait(3)
     end
 end)
 
@@ -845,4 +921,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | FPS/Ping/Time on Title Bar | Minimize to Icon")
+print("✅ Sailor Piece GUI Loaded! | Auto Bounty Display | FPS/Ping/Time on Title Bar")
