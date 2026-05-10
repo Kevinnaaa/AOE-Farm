@@ -2,7 +2,7 @@
     Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO ICON)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
     Permanent Stats | FPS/Ping/Time on Title Bar | Auto Bounty Display
-    PC + Mobile Support
+    PC + Mobile Support | Gradient Red Icon
 --]]
 
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
@@ -159,25 +159,69 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = Main
 
--- Minimize Icon (RED, NO GLOW, NOT ANIMATED)
-local MinimizeIcon = Instance.new("TextButton")
+-- =============================================
+-- GRADIENT RED MINIMIZE ICON
+-- =============================================
+local iconSize = isMobile and 55 or 45
+
+local MinimizeIcon = Instance.new("Frame")
 MinimizeIcon.Name = "MinimizeIcon"
-MinimizeIcon.Size = UDim2.new(0, isMobile and 55 or 45, 0, isMobile and 55 or 45)
+MinimizeIcon.Size = UDim2.new(0, iconSize, 0, iconSize)
 MinimizeIcon.Position = UDim2.new(0, 10, 0, isMobile and 140 or 80)
-MinimizeIcon.BackgroundColor3 = Color3.fromRGB(180, 25, 25)
+MinimizeIcon.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 MinimizeIcon.BorderSizePixel = 0
-MinimizeIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeIcon.Text = "⚔️"
-MinimizeIcon.Font = Enum.Font.GothamBold
-MinimizeIcon.TextSize = isMobile and 24 or 20
-MinimizeIcon.AutoButtonColor = false
 MinimizeIcon.Visible = false
-MinimizeIcon.Active = true
 MinimizeIcon.Parent = GUI
 
 local IconCorner = Instance.new("UICorner")
 IconCorner.CornerRadius = UDim.new(0, 8)
 IconCorner.Parent = MinimizeIcon
+
+-- Gradient layers (top to bottom)
+local gradientColors = {
+    Color3.fromRGB(255, 30, 30),   -- Bright red
+    Color3.fromRGB(220, 20, 20),   -- Medium red
+    Color3.fromRGB(180, 10, 10),   -- Dark red
+    Color3.fromRGB(140, 5, 5),     -- Darker red
+    Color3.fromRGB(100, 0, 0),     -- Deep red
+}
+
+local gradientFrames = {}
+local gradientCount = #gradientColors
+
+for i = 1, gradientCount do
+    local gradFrame = Instance.new("Frame")
+    gradFrame.Size = UDim2.new(1, 0, 1/gradientCount, 1)
+    gradFrame.Position = UDim2.new(0, 0, (i-1)/gradientCount, 0)
+    gradFrame.BackgroundColor3 = gradientColors[i]
+    gradFrame.BorderSizePixel = 0
+    gradFrame.Parent = MinimizeIcon
+    
+    -- Round corners on first and last
+    if i == 1 then
+        local topCorner = Instance.new("UICorner")
+        topCorner.CornerRadius = UDim.new(0, 8)
+        topCorner.Parent = gradFrame
+    elseif i == gradientCount then
+        local bottomCorner = Instance.new("UICorner")
+        bottomCorner.CornerRadius = UDim.new(0, 8)
+        bottomCorner.Parent = gradFrame
+    end
+    
+    table.insert(gradientFrames, gradFrame)
+end
+
+-- Icon text on top
+local IconText = Instance.new("TextButton")
+IconText.Size = UDim2.new(1, 0, 1, 0)
+IconText.BackgroundTransparency = 1
+IconText.TextColor3 = Color3.fromRGB(255, 255, 255)
+IconText.Text = "⚔️"
+IconText.Font = Enum.Font.GothamBold
+IconText.TextSize = isMobile and 24 or 20
+IconText.AutoButtonColor = false
+IconText.Active = true
+IconText.Parent = MinimizeIcon
 
 -- Title Bar
 local TitleBar = Instance.new("Frame")
@@ -700,7 +744,7 @@ local function showIcon()
 end
 
 MinBtn.MouseButton1Click:Connect(showIcon)
-MinimizeIcon.MouseButton1Click:Connect(showMain)
+IconText.MouseButton1Click:Connect(showMain)
 
 MinBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch then
@@ -708,7 +752,7 @@ MinBtn.InputBegan:Connect(function(input)
     end
 end)
 
--- Icon: tap to restore, drag to move (works on mobile)
+-- Icon: tap to restore, drag to move
 local iconDragging = false
 local iconDragStart
 local iconStartPos
@@ -736,14 +780,13 @@ end)
 MinimizeIcon.InputEnded:Connect(function(input)
     if iconDragging then
         if not iconMoved then
-            -- It was a tap, restore window
             showMain()
         end
         iconDragging = false
     end
 end)
 
--- Main window draggable (mouse + touch)
+-- Main window draggable
 local dragActive = false
 local dragInput
 local dragStart
@@ -828,7 +871,7 @@ task.spawn(function()
     end
 end)
 
--- Bounty (auto-update every 3 seconds)
+-- Bounty
 task.spawn(function()
     while ScriptActive do
         local bounty = scanBounty()
@@ -945,4 +988,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | PC + Mobile | Auto Bounty | FPS/Ping/Time")
+print("✅ Sailor Piece GUI Loaded! | PC + Mobile | Gradient Red Icon | Auto Bounty")
