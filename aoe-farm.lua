@@ -1,6 +1,7 @@
 --[[
-    Sailor Piece - ALL IN ONE (RAYFIELD STYLE)
-    AOE Farm + Anti AFK + Speed/Jump/FOV + Stats Display
+    Sailor Piece - ALL IN ONE (RAYFIELD STYLE - FIXED)
+    AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
+    Permanent Stats | Terminate Button
 --]]
 
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
@@ -12,16 +13,21 @@ local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
--- Settings
+-- Permanent Settings (not changeable)
+local PERMANENT = {
+    Range = 30,
+    WalkSpeed = 50,
+    JumpPower = 75,
+    FOV = 100
+}
+
+-- Toggle Settings
 local Settings = {
     Farming = false,
     AutoClick = false,
     AntiAFK = true,
-    Range = 30,
-    WalkSpeed = 50,
-    JumpPower = 75,
-    FOV = 100,
     ClickSpeed = 0.1,
     Minimized = false
 }
@@ -44,7 +50,7 @@ end
 getgenv().SailorPieceLoaded = true
 
 -- =============================================
--- RAYFIELD-STYLE GUI
+-- GUI CREATION
 -- =============================================
 local GUI = Instance.new("ScreenGui")
 GUI.Name = "SailorPieceGUI"
@@ -61,7 +67,6 @@ Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
 Main.Parent = GUI
 
--- Rounded corners effect
 local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = Main
@@ -72,18 +77,6 @@ TitleBar.Size = UDim2.new(1, 0, 0, 32)
 TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 TitleBar.BorderSizePixel = 0
 TitleBar.Parent = Main
-
-local TitleCorner = Instance.new("UICorner")
-TitleCorner.CornerRadius = UDim.new(0, 6)
-TitleCorner.Parent = TitleBar
-
--- Fix bottom corners
-local TitleBottom = Instance.new("Frame")
-TitleBottom.Size = UDim2.new(1, 0, 0, 6)
-TitleBottom.Position = UDim2.new(0, 0, 1, -6)
-TitleBottom.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-TitleBottom.BorderSizePixel = 0
-TitleBottom.Parent = TitleBar
 
 local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -50, 1, 0)
@@ -106,21 +99,28 @@ MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinBtn.Text = "—"
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.TextSize = 14
+MinBtn.AutoButtonColor = false
 MinBtn.Parent = TitleBar
 
 local MinCorner = Instance.new("UICorner")
 MinCorner.CornerRadius = UDim.new(0, 4)
 MinCorner.Parent = MinBtn
 
+-- Content Container
+local ContentContainer = Instance.new("Frame")
+ContentContainer.Size = UDim2.new(1, 0, 1, -32)
+ContentContainer.Position = UDim2.new(0, 0, 0, 32)
+ContentContainer.BackgroundTransparency = 1
+ContentContainer.Parent = Main
+
 -- Sidebar
 local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, 140, 1, -32)
-Sidebar.Position = UDim2.new(0, 0, 0, 32)
+Sidebar.Size = UDim2.new(0, 140, 1, 0)
+Sidebar.Position = UDim2.new(0, 0, 0, 0)
 Sidebar.BackgroundColor3 = Color3.fromRGB(23, 23, 23)
 Sidebar.BorderSizePixel = 0
-Sidebar.Parent = Main
+Sidebar.Parent = ContentContainer
 
--- Sidebar Border
 local SidebarBorder = Instance.new("Frame")
 SidebarBorder.Size = UDim2.new(0, 1, 1, 0)
 SidebarBorder.Position = UDim2.new(1, 0, 0, 0)
@@ -128,7 +128,7 @@ SidebarBorder.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 SidebarBorder.BorderSizePixel = 0
 SidebarBorder.Parent = Sidebar
 
--- Sidebar Logo/Info
+-- Sidebar Logo
 local SidebarLogo = Instance.new("Frame")
 SidebarLogo.Size = UDim2.new(1, 0, 0, 45)
 SidebarLogo.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -157,12 +157,9 @@ LogoSub.Font = Enum.Font.Gotham
 LogoSub.TextSize = 9
 LogoSub.Parent = SidebarLogo
 
--- Tab Buttons
-local Tabs = {}
-local TabNames = {"Farm", "Player", "Visuals", "Settings"}
-local TabIcons = {"⚔️", "👤", "👁️", "⚙️"}
+-- Tab System
+local TabButtons = {}
 local TabPages = {}
-local CurrentTab = 1
 
 local function CreateTab(name, icon, index)
     local btn = Instance.new("TextButton")
@@ -175,40 +172,38 @@ local function CreateTab(name, icon, index)
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = 11
-    btn.Parent = Sidebar
     btn.AutoButtonColor = false
+    btn.Parent = Sidebar
     
     local btnCorner = Instance.new("UICorner")
     btnCorner.CornerRadius = UDim.new(0, 4)
     btnCorner.Parent = btn
     
-    -- Page Frame
     local page = Instance.new("Frame")
-    page.Size = UDim2.new(1, -140, 1, -32)
-    page.Position = UDim2.new(0, 140, 0, 32)
+    page.Size = UDim2.new(1, -140, 1, 0)
+    page.Position = UDim2.new(0, 140, 0, 0)
     page.BackgroundTransparency = 1
     page.Visible = (index == 1)
-    page.Parent = Main
+    page.Parent = ContentContainer
     
     btn.MouseButton1Click:Connect(function()
-        for i, tab in pairs(Tabs) do
-            tab.BackgroundColor3 = Color3.fromRGB(23, 23, 23)
-            tab.TextColor3 = Color3.fromRGB(150, 150, 150)
+        for i = 1, #TabButtons do
+            TabButtons[i].BackgroundColor3 = Color3.fromRGB(23, 23, 23)
+            TabButtons[i].TextColor3 = Color3.fromRGB(150, 150, 150)
             TabPages[i].Visible = false
         end
         btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         page.Visible = true
-        CurrentTab = index
     end)
     
-    table.insert(Tabs, btn)
+    table.insert(TabButtons, btn)
     table.insert(TabPages, page)
     return page
 end
 
 -- =============================================
--- SECTION CREATION HELPERS
+-- UI HELPERS
 -- =============================================
 local function CreateSection(parent, title, yPos)
     local section = Instance.new("Frame")
@@ -239,19 +234,19 @@ local function CreateSection(parent, title, yPos)
 end
 
 local function CreateToggle(parent, title, default, yPos, callback)
-    local toggle = Instance.new("Frame")
-    toggle.Size = UDim2.new(1, -30, 0, 30)
-    toggle.Position = UDim2.new(0, 15, 0, yPos)
-    toggle.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    toggle.BorderSizePixel = 0
-    toggle.Parent = parent
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.new(1, -30, 0, 30)
+    bg.Position = UDim2.new(0, 15, 0, yPos)
+    bg.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    bg.BorderSizePixel = 0
+    bg.Parent = parent
     
-    local toggleCorner = Instance.new("UICorner")
-    toggleCorner.CornerRadius = UDim.new(0, 4)
-    toggleCorner.Parent = toggle
+    local bgCorner = Instance.new("UICorner")
+    bgCorner.CornerRadius = UDim.new(0, 4)
+    bgCorner.Parent = bg
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.6, -10, 1, 0)
+    label.Size = UDim2.new(0.65, -10, 1, 0)
     label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
     label.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -259,16 +254,18 @@ local function CreateToggle(parent, title, default, yPos, callback)
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Font = Enum.Font.Gotham
     label.TextSize = 11
-    label.Parent = toggle
+    label.Parent = bg
+    
+    local state = default
     
     local switch = Instance.new("TextButton")
     switch.Size = UDim2.new(0, 36, 0, 18)
     switch.Position = UDim2.new(1, -46, 0.5, -9)
-    switch.BackgroundColor3 = default and Color3.fromRGB(60, 160, 60) or Color3.fromRGB(50, 50, 50)
+    switch.BackgroundColor3 = state and Color3.fromRGB(60, 160, 60) or Color3.fromRGB(50, 50, 50)
     switch.BorderSizePixel = 0
     switch.Text = ""
     switch.AutoButtonColor = false
-    switch.Parent = toggle
+    switch.Parent = bg
     
     local switchCorner = Instance.new("UICorner")
     switchCorner.CornerRadius = UDim.new(1, 0)
@@ -276,7 +273,7 @@ local function CreateToggle(parent, title, default, yPos, callback)
     
     local dot = Instance.new("Frame")
     dot.Size = UDim2.new(0, 14, 0, 14)
-    dot.Position = default and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+    dot.Position = state and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
     dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     dot.BorderSizePixel = 0
     dot.Parent = switch
@@ -285,16 +282,17 @@ local function CreateToggle(parent, title, default, yPos, callback)
     dotCorner.CornerRadius = UDim.new(1, 0)
     dotCorner.Parent = dot
     
-    local state = default
-    
     switch.MouseButton1Click:Connect(function()
         state = not state
         switch.BackgroundColor3 = state and Color3.fromRGB(60, 160, 60) or Color3.fromRGB(50, 50, 50)
-        dot:TweenPosition(UDim2.new(state and 1 or 0, state and -16 or 2, 0.5, -7), "Out", "Quad", 0.15, true)
+        local targetPos = state and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
+        local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(dot, tweenInfo, {Position = targetPos})
+        tween:Play()
         callback(state)
     end)
     
-    return toggle, switch, dot
+    return bg
 end
 
 local function CreateButton(parent, title, yPos, callback)
@@ -316,7 +314,6 @@ local function CreateButton(parent, title, yPos, callback)
     
     btn.MouseButton1Click:Connect(callback)
     
-    -- Hover effect
     btn.MouseEnter:Connect(function()
         btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     end)
@@ -327,105 +324,18 @@ local function CreateButton(parent, title, yPos, callback)
     return btn
 end
 
-local function CreateSlider(parent, title, min, max, default, yPos, callback)
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, -30, 0, 55)
-    frame.Position = UDim2.new(0, 15, 0, yPos)
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    frame.BorderSizePixel = 0
-    frame.Parent = parent
-    
-    local frameCorner = Instance.new("UICorner")
-    frameCorner.CornerRadius = UDim.new(0, 4)
-    frameCorner.Parent = frame
-    
+local function CreateInfoLabel(parent, text, yPos, color)
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -20, 0, 18)
-    label.Position = UDim2.new(0, 10, 0, 6)
+    label.Size = UDim2.new(1, -30, 0, 20)
+    label.Position = UDim2.new(0, 15, 0, yPos)
     label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    label.Text = title .. ": " .. default
+    label.TextColor3 = color or Color3.fromRGB(200, 200, 200)
+    label.Text = text
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Font = Enum.Font.Gotham
-    label.TextSize = 10
-    label.Parent = frame
-    
-    -- Slider Track
-    local track = Instance.new("Frame")
-    track.Size = UDim2.new(1, -20, 0, 4)
-    track.Position = UDim2.new(0, 10, 0, 32)
-    track.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    track.BorderSizePixel = 0
-    track.Parent = frame
-    
-    local trackCorner = Instance.new("UICorner")
-    trackCorner.CornerRadius = UDim.new(0, 2)
-    trackCorner.Parent = track
-    
-    -- Fill
-    local percent = (default - min) / (max - min)
-    local fill = Instance.new("Frame")
-    fill.Size = UDim2.new(percent, 0, 1, 0)
-    fill.BackgroundColor3 = Color3.fromRGB(255, 200, 0)
-    fill.BorderSizePixel = 0
-    fill.Parent = track
-    
-    local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(0, 2)
-    fillCorner.Parent = fill
-    
-    -- Knob
-    local knob = Instance.new("TextButton")
-    knob.Size = UDim2.new(0, 12, 0, 12)
-    knob.Position = UDim2.new(percent, -6, 0.5, -6)
-    knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    knob.BorderSizePixel = 0
-    knob.Text = ""
-    knob.AutoButtonColor = false
-    knob.Parent = track
-    
-    local knobCorner = Instance.new("UICorner")
-    knobCorner.CornerRadius = UDim.new(1, 0)
-    knobCorner.Parent = knob
-    
-    local dragging = false
-    
-    local function updateSlider(input)
-        local mousePos = UserInputService:GetMouseLocation()
-        local trackPos = track.AbsolutePosition
-        local trackSize = track.AbsoluteSize
-        local relativeX = math.clamp(mousePos.X - trackPos.X, 0, trackSize.X)
-        local newPercent = relativeX / trackSize.X
-        local value = math.floor(min + (max - min) * newPercent)
-        
-        fill.Size = UDim2.new(newPercent, 0, 1, 0)
-        knob.Position = UDim2.new(newPercent, -6, 0.5, -6)
-        label.Text = title .. ": " .. value
-        callback(value)
-    end
-    
-    knob.MouseButton1Down:Connect(function()
-        dragging = true
-    end)
-    
-    track.MouseButton1Down:Connect(function()
-        dragging = true
-        updateSlider()
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            updateSlider()
-        end
-    end)
-    
-    return frame
+    label.TextSize = 11
+    label.Parent = parent
+    return label
 end
 
 -- =============================================
@@ -433,8 +343,7 @@ end
 -- =============================================
 local FarmPage = CreateTab("Farm", "⚔️", 1)
 local PlayerPage = CreateTab("Player", "👤", 2)
-local VisualsPage = CreateTab("Visuals", "👁️", 3)
-local SettingsPage = CreateTab("Settings", "⚙️", 4)
+local SettingsPage = CreateTab("Settings", "⚙️", 3)
 
 -- =============================================
 -- FARM TAB
@@ -466,16 +375,17 @@ CreateToggle(FarmPage, "Anti-AFK", true, 130, function(state)
     Settings.AntiAFK = state
 end)
 
-CreateSection(FarmPage, "TARGETING", 170)
+CreateSection(FarmPage, "STATS INFO", 170)
 
-CreateSlider(FarmPage, "Farm Range", 5, 100, 30, 200, function(value)
-    Settings.Range = value
-end)
+CreateInfoLabel(FarmPage, "Range: 30 (Fixed)", 198, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "Speed: 50 (Fixed)", 218, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "Jump: 75 (Fixed)", 238, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(FarmPage, "FOV: 100 (Fixed)", 258, Color3.fromRGB(255, 200, 0))
 
--- NPC Counter
+-- NPC Counter (bottom of farm page)
 local NPCCount = Instance.new("TextLabel")
 NPCCount.Size = UDim2.new(1, -30, 0, 14)
-NPCCount.Position = UDim2.new(0, 15, 0, 260)
+NPCCount.Position = UDim2.new(0, 15, 0, 278)
 NPCCount.BackgroundTransparency = 1
 NPCCount.TextColor3 = Color3.fromRGB(120, 120, 120)
 NPCCount.Text = "NPCs in range: 0"
@@ -500,9 +410,8 @@ PlayerName.Font = Enum.Font.GothamBold
 PlayerName.TextSize = 12
 PlayerName.Parent = PlayerPage
 
--- Stats Display
 local PlayerStats = Instance.new("Frame")
-PlayerStats.Size = UDim2.new(1, -30, 0, 80)
+PlayerStats.Size = UDim2.new(1, -30, 0, 100)
 PlayerStats.Position = UDim2.new(0, 15, 0, 68)
 PlayerStats.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 PlayerStats.BorderSizePixel = 0
@@ -525,12 +434,11 @@ StatsText.TextSize = 10
 StatsText.TextWrapped = true
 StatsText.Parent = PlayerStats
 
-CreateButton(PlayerPage, "🔍 Scan Character Data", 158, function()
+CreateButton(PlayerPage, "🔍 Scan Character Data", 178, function()
     StatsText.Text = "🔍 Scanning...\n"
     local found = {}
     
     pcall(function()
-        -- Check leaderstats
         local leaderstats = LocalPlayer:FindFirstChild("leaderstats") or LocalPlayer:FindFirstChild("stats") or LocalPlayer:FindFirstChild("Data")
         if leaderstats then
             table.insert(found, "📊 Stats:")
@@ -541,7 +449,6 @@ CreateButton(PlayerPage, "🔍 Scan Character Data", 158, function()
             end
         end
         
-        -- Check PlayerGui
         local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
         if playerGui then
             for _, child in pairs(playerGui:GetDescendants()) do
@@ -550,7 +457,6 @@ CreateButton(PlayerPage, "🔍 Scan Character Data", 158, function()
                     if string.find(text, "Bounty") or string.find(text, "Melee") or string.find(text, "Sword") 
                     or string.find(text, "Race") or string.find(text, "Level") or string.find(text, "Fruit")
                     or string.find(text, "Devil") or string.find(text, "Beli") then
-                        -- Clean up text
                         local clean = text:gsub("\n", " | "):gsub("%s+", " ")
                         if #clean < 60 then
                             table.insert(found, "📋 " .. clean)
@@ -568,12 +474,11 @@ CreateButton(PlayerPage, "🔍 Scan Character Data", 158, function()
     end
 end)
 
-CreateSection(PlayerPage, "HEALTH", 200)
+CreateSection(PlayerPage, "HEALTH", 220)
 
--- Health Bar
 local HealthBarBg = Instance.new("Frame")
 HealthBarBg.Size = UDim2.new(1, -30, 0, 20)
-HealthBarBg.Position = UDim2.new(0, 15, 0, 228)
+HealthBarBg.Position = UDim2.new(0, 15, 0, 248)
 HealthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 HealthBarBg.BorderSizePixel = 0
 HealthBarBg.Parent = PlayerPage
@@ -602,83 +507,24 @@ HealthText.TextSize = 10
 HealthText.Parent = HealthBar
 
 -- =============================================
--- VISUALS TAB
--- =============================================
-CreateSection(VisualsPage, "MOVEMENT", 10)
-
-CreateSlider(VisualsPage, "Walk Speed", 16, 100, 50, 38, function(value)
-    Settings.WalkSpeed = value
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = value
-        end
-    end)
-end)
-
-CreateSlider(VisualsPage, "Jump Power", 25, 200, 75, 96, function(value)
-    Settings.JumpPower = value
-    pcall(function()
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.JumpPower = value
-        end
-    end)
-end)
-
-CreateSection(VisualsPage, "CAMERA", 160)
-
-CreateSlider(VisualsPage, "Field of View", 30, 120, 100, 188, function(value)
-    Settings.FOV = value
-    pcall(function()
-        workspace.CurrentCamera.FieldOfView = value
-    end)
-end)
-
--- =============================================
 -- SETTINGS TAB
 -- =============================================
 CreateSection(SettingsPage, "STATUS", 10)
 
--- FPS Display
-local FPSDisplay = Instance.new("TextLabel")
-FPSDisplay.Size = UDim2.new(1, -30, 0, 20)
-FPSDisplay.Position = UDim2.new(0, 15, 0, 38)
-FPSDisplay.BackgroundTransparency = 1
-FPSDisplay.TextColor3 = Color3.fromRGB(0, 255, 100)
-FPSDisplay.Text = "FPS: --"
-FPSDisplay.TextXAlignment = Enum.TextXAlignment.Left
-FPSDisplay.Font = Enum.Font.GothamBold
-FPSDisplay.TextSize = 11
-FPSDisplay.Parent = SettingsPage
+local FPSDisplay = CreateInfoLabel(SettingsPage, "FPS: --", 38, Color3.fromRGB(0, 255, 100))
+local PingDisplay = CreateInfoLabel(SettingsPage, "Ping: --ms", 58, Color3.fromRGB(100, 200, 255))
+local TimerDisplay = CreateInfoLabel(SettingsPage, "Runtime: 0:0:0", 78, Color3.fromRGB(255, 200, 0))
 
--- Ping Display
-local PingDisplay = Instance.new("TextLabel")
-PingDisplay.Size = UDim2.new(1, -30, 0, 20)
-PingDisplay.Position = UDim2.new(0, 15, 0, 58)
-PingDisplay.BackgroundTransparency = 1
-PingDisplay.TextColor3 = Color3.fromRGB(100, 200, 255)
-PingDisplay.Text = "Ping: --ms"
-PingDisplay.TextXAlignment = Enum.TextXAlignment.Left
-PingDisplay.Font = Enum.Font.GothamBold
-PingDisplay.TextSize = 11
-PingDisplay.Parent = SettingsPage
+CreateSection(SettingsPage, "PERMANENT STATS", 108)
 
--- Timer Display
-local TimerDisplay = Instance.new("TextLabel")
-TimerDisplay.Size = UDim2.new(1, -30, 0, 20)
-TimerDisplay.Position = UDim2.new(0, 15, 0, 78)
-TimerDisplay.BackgroundTransparency = 1
-TimerDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-TimerDisplay.Text = "Runtime: 0:0:0"
-TimerDisplay.TextXAlignment = Enum.TextXAlignment.Left
-TimerDisplay.Font = Enum.Font.GothamBold
-TimerDisplay.TextSize = 11
-TimerDisplay.Parent = SettingsPage
+CreateInfoLabel(SettingsPage, "Farm Range: 30", 136, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(SettingsPage, "Walk Speed: 50", 156, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(SettingsPage, "Jump Power: 75", 176, Color3.fromRGB(255, 200, 0))
+CreateInfoLabel(SettingsPage, "FOV: 100", 196, Color3.fromRGB(255, 200, 0))
 
-CreateSection(SettingsPage, "ACTIONS", 110)
+CreateSection(SettingsPage, "TERMINATE", 226)
 
-CreateButton(SettingsPage, "⚠️ Terminate Script", 138, function()
+CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 254, function()
     ScriptActive = false
     Settings.Farming = false
     Settings.AutoClick = false
@@ -686,40 +532,51 @@ CreateButton(SettingsPage, "⚠️ Terminate Script", 138, function()
 end)
 
 -- =============================================
--- MINIMIZE FUNCTIONALITY
+-- MINIMIZE
 -- =============================================
+local mainSize = UDim2.new(0, 500, 0, 320)
+local minimizedSize = UDim2.new(0, 500, 0, 32)
+
 MinBtn.MouseButton1Click:Connect(function()
     Settings.Minimized = not Settings.Minimized
     if Settings.Minimized then
-        Main.Size = UDim2.new(0, 500, 0, 32)
-        MinBtn.Text = "□"
+        Main.Size = minimizedSize
+        MinBtn.Text = "+"
     else
-        Main.Size = UDim2.new(0, 500, 0, 320)
+        Main.Size = mainSize
         MinBtn.Text = "—"
     end
 end)
 
 -- Draggable
-local dragging = false
-local dragStart, startPos
+local dragActive = false
+local dragInput
+local dragStart
+local startPos
 
 TitleBar.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragActive = true
         dragStart = input.Position
         startPos = Main.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragActive = false
+            end
+        end)
     end
 end)
 
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = false
+TitleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
     end
 end)
 
-UserInputService.InputChanged:Connect(function(input)
-    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Position - dragStart
+RunService.RenderStepped:Connect(function()
+    if dragActive and dragInput then
+        local delta = dragInput.Position - dragStart
         Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
     end
 end)
@@ -807,7 +664,7 @@ task.spawn(function()
                     for _, obj in pairs(npcFolder:GetChildren()) do
                         if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
                             local npcRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
-                            if npcRoot and (root.Position - npcRoot.Position).Magnitude <= Settings.Range then
+                            if npcRoot and (root.Position - npcRoot.Position).Magnitude <= PERMANENT.Range then
                                 count = count + 1
                             end
                         end
@@ -820,7 +677,7 @@ task.spawn(function()
     end
 end)
 
--- Apply Stats
+-- Apply Permanent Stats
 task.spawn(function()
     while ScriptActive do
         pcall(function()
@@ -828,17 +685,17 @@ task.spawn(function()
             if char then
                 local h = char:FindFirstChild("Humanoid")
                 if h then
-                    h.WalkSpeed = Settings.WalkSpeed
-                    h.JumpPower = Settings.JumpPower
+                    h.WalkSpeed = PERMANENT.WalkSpeed
+                    h.JumpPower = PERMANENT.JumpPower
                 end
             end
-            workspace.CurrentCamera.FieldOfView = Settings.FOV
+            workspace.CurrentCamera.FieldOfView = PERMANENT.FOV
         end)
         task.wait(0.5)
     end
 end)
 
--- AOE Farm
+-- AOE Farm (Uses PERMANENT.Range)
 task.spawn(function()
     while ScriptActive do
         if Settings.Farming then
@@ -856,7 +713,7 @@ task.spawn(function()
                             local npcRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
                             if npcRoot then
                                 local dist = (root.Position - npcRoot.Position).Magnitude
-                                if dist <= Settings.Range then
+                                if dist <= PERMANENT.Range then
                                     table.insert(npcs, {root = npcRoot, dist = dist})
                                 end
                             end
@@ -891,4 +748,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece - Rayfield Style GUI Loaded | by kibsss")
+print("✅ Sailor Piece GUI Loaded! | Range:30 | Speed:50 | Jump:75 | FOV:100")
