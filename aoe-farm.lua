@@ -2,7 +2,7 @@
     Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO ICON)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
     Permanent Stats | FPS/Ping/Time on Title Bar | Auto Bounty Display
-    PC + Mobile Support
+    PC + Mobile Support | FIXED TOGGLES
 --]]
 
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
@@ -159,7 +159,7 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = Main
 
--- Minimize Icon (RED, NO GLOW, NOT ANIMATED)
+-- Minimize Icon (RED)
 local MinimizeIcon = Instance.new("TextButton")
 MinimizeIcon.Name = "MinimizeIcon"
 MinimizeIcon.Size = UDim2.new(0, isMobile and 55 or 45, 0, isMobile and 55 or 45)
@@ -173,6 +173,7 @@ MinimizeIcon.TextSize = isMobile and 24 or 20
 MinimizeIcon.AutoButtonColor = false
 MinimizeIcon.Visible = false
 MinimizeIcon.Active = true
+MinimizeIcon.ZIndex = 10
 MinimizeIcon.Parent = GUI
 
 local IconCorner = Instance.new("UICorner")
@@ -246,6 +247,7 @@ MinBtn.Font = Enum.Font.GothamBold
 MinBtn.TextSize = isMobile and 16 or 14
 MinBtn.AutoButtonColor = false
 MinBtn.Active = true
+MinBtn.ZIndex = 10
 MinBtn.Parent = TitleBar
 
 local MinCorner = Instance.new("UICorner")
@@ -326,6 +328,7 @@ local function CreateTab(name, icon, index)
     btn.TextSize = btnFont
     btn.AutoButtonColor = false
     btn.Active = true
+    btn.ZIndex = 10
     btn.Parent = Sidebar
     
     local btnCorner = Instance.new("UICorner")
@@ -339,7 +342,7 @@ local function CreateTab(name, icon, index)
     page.Visible = (index == 1)
     page.Parent = ContentContainer
     
-    btn.MouseButton1Click:Connect(function()
+    btn.Activated:Connect(function()
         for i = 1, #TabButtons do
             TabButtons[i].BackgroundColor3 = Color3.fromRGB(23, 23, 23)
             TabButtons[i].TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -348,19 +351,6 @@ local function CreateTab(name, icon, index)
         btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         page.Visible = true
-    end)
-    
-    btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            for i = 1, #TabButtons do
-                TabButtons[i].BackgroundColor3 = Color3.fromRGB(23, 23, 23)
-                TabButtons[i].TextColor3 = Color3.fromRGB(150, 150, 150)
-                TabPages[i].Visible = false
-            end
-            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-            btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            page.Visible = true
-        end
     end)
     
     table.insert(TabButtons, btn)
@@ -435,6 +425,7 @@ local function CreateToggle(parent, title, default, yPos, callback)
     switch.Text = ""
     switch.AutoButtonColor = false
     switch.Active = true
+    switch.ZIndex = 10
     switch.Parent = bg
     
     local switchCorner = Instance.new("UICorner")
@@ -463,12 +454,8 @@ local function CreateToggle(parent, title, default, yPos, callback)
         callback(state)
     end
     
-    switch.MouseButton1Click:Connect(toggleSwitch)
-    switch.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            toggleSwitch()
-        end
-    end)
+    -- Use Activated instead of MouseButton1Click (works on both PC and mobile)
+    switch.Activated:Connect(toggleSwitch)
     
     return bg
 end
@@ -486,18 +473,14 @@ local function CreateButton(parent, title, yPos, callback)
     btn.TextSize = isMobile and 10 or 11
     btn.AutoButtonColor = false
     btn.Active = true
+    btn.ZIndex = 10
     btn.Parent = parent
     
     local btnCorner = Instance.new("UICorner")
     btnCorner.CornerRadius = UDim.new(0, 4)
     btnCorner.Parent = btn
     
-    btn.MouseButton1Click:Connect(callback)
-    btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.Touch then
-            callback()
-        end
-    end)
+    btn.Activated:Connect(callback)
     
     btn.MouseEnter:Connect(function()
         btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
@@ -699,16 +682,10 @@ local function showIcon()
     Settings.Minimized = true
 end
 
-MinBtn.MouseButton1Click:Connect(showIcon)
-MinimizeIcon.MouseButton1Click:Connect(showMain)
+MinBtn.Activated:Connect(showIcon)
+MinimizeIcon.Activated:Connect(showMain)
 
-MinBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.Touch then
-        showIcon()
-    end
-end)
-
--- Icon: tap to restore, drag to move (works on mobile)
+-- Icon: tap to restore, drag to move
 local iconDragging = false
 local iconDragStart
 local iconStartPos
@@ -736,14 +713,13 @@ end)
 MinimizeIcon.InputEnded:Connect(function(input)
     if iconDragging then
         if not iconMoved then
-            -- It was a tap, restore window
             showMain()
         end
         iconDragging = false
     end
 end)
 
--- Main window draggable (mouse + touch)
+-- Main window draggable
 local dragActive = false
 local dragInput
 local dragStart
@@ -828,7 +804,7 @@ task.spawn(function()
     end
 end)
 
--- Bounty (auto-update every 3 seconds)
+-- Bounty
 task.spawn(function()
     while ScriptActive do
         local bounty = scanBounty()
@@ -945,4 +921,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | PC + Mobile | Auto Bounty | FPS/Ping/Time")
+print("✅ Sailor Piece GUI Loaded! | FIXED TOGGLES | PC + Mobile | Auto Bounty")
