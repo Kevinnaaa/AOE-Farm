@@ -1,10 +1,10 @@
 --[[
-    Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO ICON)
-    AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
-    Permanent Stats | FPS/Ping/Time on Title Bar | Auto Bounty Display
-    PC + Mobile Support | FIXED TOGGLES
+    Sailor Piece - ALL IN ONE
+    AOE Farm + Anti AFK (VirtualUser PC/Mobile) + Speed 50 + Jump 75 + FOV 100
+    FPS & Ping Display + Timer | Draggable Minimize Icon | PC + Mobile
 --]]
 
+-- Anti-AFK initialization
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
 
 local Players = game:GetService("Players")
@@ -12,761 +12,405 @@ local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
-local VirtualUser = game:GetService("VirtualUser")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+local TweenService = game:GetService("TweenService")
+local VirtualUser = game:GetService("VirtualUser")
 
--- Detect platform
+local Farming = false
+local ScriptActive = true
+local AntiAFKEnabled = true
+local Minimized = false
+local Range = 30
+local WalkSpeed = 50
+local JumpPower = 75
+local FOV = 100
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
--- Permanent Settings
-local PERMANENT = {
-    Range = 30,
-    WalkSpeed = 50,
-    JumpPower = 75,
-    FOV = 100
-}
-
--- Toggle Settings
-local Settings = {
-    Farming = false,
-    AntiAFK = true,
-    Minimized = false
-}
-
-local ScriptActive = true
-
 -- FPS Tracking
-local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
+local fpsCount = 0
+local fps = 0
+local lastFPSUpdate = tick()
 
 -- Timer
-local saniye, dakika, saat = 0, 0, 0
+local saniye = 0
+local dakika = 0
+local saat = 0
 
--- Bounty
-local CurrentBounty = "Searching..."
-
--- Clean up
-if getgenv().SailorPieceLoaded then
-    getgenv().SailorPieceLoaded = false
-    if game.CoreGui:FindFirstChild("SailorPieceGUI") then
-        game.CoreGui.SailorPieceGUI:Destroy()
-    end
-    if game.CoreGui:FindFirstChild("MinimizeIcon") then
-        game.CoreGui.MinimizeIcon:Destroy()
+-- Clean up old instance if exists
+if getgenv().AntiAfkExecuted then
+    getgenv().AntiAfkExecuted = false
+    getgenv().zamanbaslaticisi = false
+    if game.CoreGui:FindFirstChild("AntiAFKGUI") then
+        game.CoreGui.AntiAFKGUI:Destroy()
     end
 end
-getgenv().SailorPieceLoaded = true
+getgenv().AntiAfkExecuted = true
+getgenv().zamanbaslaticisi = true
 
 -- =============================================
--- BOUNTY SCANNER
+-- PRESENTABLE GUI (AOE Farm Controls)
 -- =============================================
-local function scanBounty()
-    local bounty = nil
-    
-    pcall(function()
-        local leaderstats = LocalPlayer:FindFirstChild("leaderstats") or LocalPlayer:FindFirstChild("stats") or LocalPlayer:FindFirstChild("Data")
-        if leaderstats then
-            for _, stat in pairs(leaderstats:GetChildren()) do
-                local name = string.lower(stat.Name)
-                if string.find(name, "bounty") or string.find(name, "beli") then
-                    if stat:IsA("IntValue") or stat:IsA("NumberValue") then
-                        bounty = tostring(stat.Value)
-                        break
-                    elseif stat:IsA("StringValue") then
-                        bounty = stat.Value
-                        break
-                    end
-                end
-            end
-        end
-        
-        if not bounty then
-            local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
-            if playerGui then
-                for _, child in pairs(playerGui:GetDescendants()) do
-                    if child:IsA("TextLabel") or child:IsA("TextButton") then
-                        local text = child.Text or ""
-                        local textLower = string.lower(text)
-                        if string.find(textLower, "bounty") then
-                            local number = string.match(text, "[%d,]+")
-                            if number then
-                                bounty = number
-                                break
-                            else
-                                local clean = text:gsub("Bounty", ""):gsub("bounty", ""):gsub("%s*:%s*", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-                                if clean ~= "" then
-                                    bounty = clean
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-        
-        if not bounty then
-            for _, child in pairs(Workspace:GetChildren()) do
-                if child:IsA("Model") and child:FindFirstChild("Head") then
-                    local billboard = child.Head:FindFirstChild("BillboardGui")
-                    if billboard then
-                        for _, element in pairs(billboard:GetDescendants()) do
-                            if element:IsA("TextLabel") and string.find(string.lower(element.Text or ""), "bounty") then
-                                local number = string.match(element.Text, "[%d,]+")
-                                if number then
-                                    bounty = number
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
-    end)
-    
-    return bounty
-end
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AllInOne"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
 
--- =============================================
--- GUI CREATION
--- =============================================
-local GUI = Instance.new("ScreenGui")
-GUI.Name = "SailorPieceGUI"
-GUI.ResetOnSpawn = false
-GUI.Parent = game.CoreGui
-GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
--- Adjust size for mobile
-local mainWidth = 500
-local mainHeight = 320
-if isMobile then
-    mainWidth = 480
-    mainHeight = 340
-end
-
--- Main Container
-local Main = Instance.new("Frame")
-Main.Name = "MainFrame"
-Main.Size = UDim2.new(0, mainWidth, 0, mainHeight)
-Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -160)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Main.BorderSizePixel = 0
-Main.ClipsDescendants = true
-Main.Parent = GUI
-
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 6)
-UICorner.Parent = Main
-
--- Minimize Icon (RED)
-local MinimizeIcon = Instance.new("TextButton")
-MinimizeIcon.Name = "MinimizeIcon"
-MinimizeIcon.Size = UDim2.new(0, isMobile and 55 or 45, 0, isMobile and 55 or 45)
-MinimizeIcon.Position = UDim2.new(0, 10, 0, isMobile and 140 or 80)
-MinimizeIcon.BackgroundColor3 = Color3.fromRGB(180, 25, 25)
-MinimizeIcon.BorderSizePixel = 0
-MinimizeIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeIcon.Text = "⚔️"
-MinimizeIcon.Font = Enum.Font.GothamBold
-MinimizeIcon.TextSize = isMobile and 24 or 20
-MinimizeIcon.AutoButtonColor = false
-MinimizeIcon.Visible = false
-MinimizeIcon.Active = true
-MinimizeIcon.ZIndex = 10
-MinimizeIcon.Parent = GUI
-
-local IconCorner = Instance.new("UICorner")
-IconCorner.CornerRadius = UDim.new(0, 8)
-IconCorner.Parent = MinimizeIcon
-
--- Title Bar
-local TitleBar = Instance.new("Frame")
-TitleBar.Size = UDim2.new(1, 0, 0, isMobile and 36 or 32)
-TitleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-TitleBar.BorderSizePixel = 0
-TitleBar.Parent = Main
-
--- FPS
-local FPSDisplay = Instance.new("TextLabel")
-FPSDisplay.Size = UDim2.new(0, 55, 1, 0)
-FPSDisplay.Position = UDim2.new(0, 8, 0, 0)
-FPSDisplay.BackgroundTransparency = 1
-FPSDisplay.TextColor3 = Color3.fromRGB(0, 255, 100)
-FPSDisplay.Text = "FPS: --"
-FPSDisplay.TextXAlignment = Enum.TextXAlignment.Left
-FPSDisplay.Font = Enum.Font.GothamBold
-FPSDisplay.TextSize = isMobile and 11 or 10
-FPSDisplay.Parent = TitleBar
-
--- Ping
-local PingDisplay = Instance.new("TextLabel")
-PingDisplay.Size = UDim2.new(0, 65, 1, 0)
-PingDisplay.Position = UDim2.new(0, 60, 0, 0)
-PingDisplay.BackgroundTransparency = 1
-PingDisplay.TextColor3 = Color3.fromRGB(100, 200, 255)
-PingDisplay.Text = "Ping: --"
-PingDisplay.TextXAlignment = Enum.TextXAlignment.Left
-PingDisplay.Font = Enum.Font.GothamBold
-PingDisplay.TextSize = isMobile and 11 or 10
-PingDisplay.Parent = TitleBar
-
--- Time
-local TimerDisplay = Instance.new("TextLabel")
-TimerDisplay.Size = UDim2.new(0, 80, 1, 0)
-TimerDisplay.Position = UDim2.new(0, 128, 0, 0)
-TimerDisplay.BackgroundTransparency = 1
-TimerDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-TimerDisplay.Text = "0:0:0"
-TimerDisplay.TextXAlignment = Enum.TextXAlignment.Left
-TimerDisplay.Font = Enum.Font.GothamBold
-TimerDisplay.TextSize = isMobile and 11 or 10
-TimerDisplay.Parent = TitleBar
-
--- Title
-local TitleText = Instance.new("TextLabel")
-TitleText.Size = UDim2.new(1, -290, 1, 0)
-TitleText.Position = UDim2.new(0, isMobile and 200 or 210, 0, 0)
-TitleText.BackgroundTransparency = 1
-TitleText.TextColor3 = Color3.fromRGB(180, 180, 180)
-TitleText.Text = "sailor piece"
-TitleText.TextXAlignment = Enum.TextXAlignment.Right
-TitleText.Font = Enum.Font.GothamBold
-TitleText.TextSize = isMobile and 12 or 11
-TitleText.Parent = TitleBar
-
--- Minimize Button
+-- LARGE DRAGGABLE MINIMIZE BUTTON
 local MinBtn = Instance.new("TextButton")
-MinBtn.Size = UDim2.new(0, isMobile and 32 or 28, 0, isMobile and 32 or 28)
-MinBtn.Position = UDim2.new(1, isMobile and -38 or -33, 0, isMobile and 2 or 2)
-MinBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+MinBtn.Size = UDim2.new(0, isMobile and 55 or 50, 0, isMobile and 55 or 50)
+MinBtn.Position = UDim2.new(0, 10, 0, isMobile and 120 or 80)
+MinBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 MinBtn.BorderSizePixel = 0
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.Text = "—"
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.TextSize = isMobile and 16 or 14
+MinBtn.Text = "⚔️"
+MinBtn.Font = Enum.Font.SourceSansBold
+MinBtn.TextSize = isMobile and 24 or 22
 MinBtn.AutoButtonColor = false
 MinBtn.Active = true
-MinBtn.ZIndex = 10
-MinBtn.Parent = TitleBar
+MinBtn.Parent = ScreenGui
 
-local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 4)
-MinCorner.Parent = MinBtn
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 220, 0, 258)
+MainFrame.Position = UDim2.new(0, isMobile and 70 or 65, 0, isMobile and 120 or 80)
+MainFrame.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Visible = true
+MainFrame.Parent = ScreenGui
 
--- Content Container
-local ContentContainer = Instance.new("Frame")
-ContentContainer.Size = UDim2.new(1, 0, 1, isMobile and -36 or -32)
-ContentContainer.Position = UDim2.new(0, 0, 0, isMobile and 36 or 32)
-ContentContainer.BackgroundTransparency = 1
-ContentContainer.Parent = Main
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 35)
+Header.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Header.BorderSizePixel = 0
+Header.Parent = MainFrame
 
--- Sidebar
-local sidebarWidth = isMobile and 130 or 140
-local Sidebar = Instance.new("Frame")
-Sidebar.Size = UDim2.new(0, sidebarWidth, 1, 0)
-Sidebar.Position = UDim2.new(0, 0, 0, 0)
-Sidebar.BackgroundColor3 = Color3.fromRGB(23, 23, 23)
-Sidebar.BorderSizePixel = 0
-Sidebar.Parent = ContentContainer
+local HeaderText = Instance.new("TextLabel")
+HeaderText.Size = UDim2.new(0.6, 0, 1, 0)
+HeaderText.Position = UDim2.new(0, 12, 0, 0)
+HeaderText.BackgroundTransparency = 1
+HeaderText.TextColor3 = Color3.fromRGB(255, 255, 255)
+HeaderText.Text = "⚔️ SAILOR PIECE by Maryyy"
+HeaderText.TextXAlignment = Enum.TextXAlignment.Left
+HeaderText.Font = Enum.Font.SourceSansBold
+HeaderText.TextSize = 14
+HeaderText.Parent = Header
 
-local SidebarBorder = Instance.new("Frame")
-SidebarBorder.Size = UDim2.new(0, 1, 1, 0)
-SidebarBorder.Position = UDim2.new(1, 0, 0, 0)
-SidebarBorder.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-SidebarBorder.BorderSizePixel = 0
-SidebarBorder.Parent = Sidebar
+local DashBtn = Instance.new("TextButton")
+DashBtn.Size = UDim2.new(0, 28, 0, 28)
+DashBtn.Position = UDim2.new(1, -32, 0, 4)
+DashBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+DashBtn.BorderSizePixel = 0
+DashBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+DashBtn.Text = "—"
+DashBtn.Font = Enum.Font.SourceSansBold
+DashBtn.TextSize = 14
+DashBtn.AutoButtonColor = false
+DashBtn.Active = true
+DashBtn.Parent = Header
 
--- Sidebar Logo
-local SidebarLogo = Instance.new("Frame")
-SidebarLogo.Size = UDim2.new(1, 0, 0, isMobile and 40 or 45)
-SidebarLogo.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-SidebarLogo.BorderSizePixel = 0
-SidebarLogo.Parent = Sidebar
+-- Stats Bar (FPS/Ping/Timer)
+local StatsBar = Instance.new("Frame")
+StatsBar.Size = UDim2.new(1, 0, 0, 30)
+StatsBar.Position = UDim2.new(0, 0, 0, 35)
+StatsBar.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+StatsBar.BorderSizePixel = 0
+StatsBar.Parent = MainFrame
 
-local LogoText = Instance.new("TextLabel")
-LogoText.Size = UDim2.new(1, -20, 0, 20)
-LogoText.Position = UDim2.new(0, 10, 0, 5)
-LogoText.BackgroundTransparency = 1
-LogoText.TextColor3 = Color3.fromRGB(255, 200, 0)
-LogoText.Text = "⚔️ SAILOR PIECE"
-LogoText.TextXAlignment = Enum.TextXAlignment.Left
-LogoText.Font = Enum.Font.GothamBold
-LogoText.TextSize = isMobile and 9 or 10
-LogoText.Parent = SidebarLogo
+local FPSLabel = Instance.new("TextLabel")
+FPSLabel.Size = UDim2.new(0.33, -5, 0, 14)
+FPSLabel.Position = UDim2.new(0, 8, 0, 2)
+FPSLabel.BackgroundTransparency = 1
+FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+FPSLabel.Text = "FPS: --"
+FPSLabel.TextXAlignment = Enum.TextXAlignment.Left
+FPSLabel.Font = Enum.Font.SourceSansBold
+FPSLabel.TextSize = 10
+FPSLabel.Parent = StatsBar
 
-local LogoSub = Instance.new("TextLabel")
-LogoSub.Size = UDim2.new(1, -20, 0, 14)
-LogoSub.Position = UDim2.new(0, 10, 0, 24)
-LogoSub.BackgroundTransparency = 1
-LogoSub.TextColor3 = Color3.fromRGB(120, 120, 120)
-LogoSub.Text = "by kibsss"
-LogoSub.TextXAlignment = Enum.TextXAlignment.Left
-LogoSub.Font = Enum.Font.Gotham
-LogoSub.TextSize = isMobile and 8 or 9
-LogoSub.Parent = SidebarLogo
+local PingLabel = Instance.new("TextLabel")
+PingLabel.Size = UDim2.new(0.33, -5, 0, 14)
+PingLabel.Position = UDim2.new(0.33, 5, 0, 2)
+PingLabel.BackgroundTransparency = 1
+PingLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+PingLabel.Text = "Ping: --ms"
+PingLabel.TextXAlignment = Enum.TextXAlignment.Center
+PingLabel.Font = Enum.Font.SourceSansBold
+PingLabel.TextSize = 10
+PingLabel.Parent = StatsBar
 
--- Tab System
-local TabButtons = {}
-local TabPages = {}
+local TimerLabel = Instance.new("TextLabel")
+TimerLabel.Size = UDim2.new(0.33, -5, 0, 14)
+TimerLabel.Position = UDim2.new(0.66, 0, 0, 2)
+TimerLabel.BackgroundTransparency = 1
+TimerLabel.TextColor3 = Color3.fromRGB(255, 200, 0)
+TimerLabel.Text = "0:0:0"
+TimerLabel.TextXAlignment = Enum.TextXAlignment.Right
+TimerLabel.Font = Enum.Font.SourceSansBold
+TimerLabel.TextSize = 10
+TimerLabel.Parent = StatsBar
 
-local function CreateTab(name, icon, index)
-    local btnSize = isMobile and 28 or 32
-    local btnFont = isMobile and 10 or 11
-    local startY = isMobile and 46 or 52
-    local spacing = isMobile and 32 or 36
-    
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -20, 0, btnSize)
-    btn.Position = UDim2.new(0, 10, 0, startY + (index - 1) * spacing)
-    btn.BackgroundColor3 = index == 1 and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(23, 23, 23)
-    btn.BorderSizePixel = 0
-    btn.TextColor3 = index == 1 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
-    btn.Text = "  " .. icon .. "  " .. name
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = btnFont
-    btn.AutoButtonColor = false
-    btn.Active = true
-    btn.ZIndex = 10
-    btn.Parent = Sidebar
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 4)
-    btnCorner.Parent = btn
-    
-    local page = Instance.new("Frame")
-    page.Size = UDim2.new(1, -sidebarWidth, 1, 0)
-    page.Position = UDim2.new(0, sidebarWidth, 0, 0)
-    page.BackgroundTransparency = 1
-    page.Visible = (index == 1)
-    page.Parent = ContentContainer
-    
-    btn.Activated:Connect(function()
-        for i = 1, #TabButtons do
-            TabButtons[i].BackgroundColor3 = Color3.fromRGB(23, 23, 23)
-            TabButtons[i].TextColor3 = Color3.fromRGB(150, 150, 150)
-            TabPages[i].Visible = false
-        end
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        page.Visible = true
-    end)
-    
-    table.insert(TabButtons, btn)
-    table.insert(TabPages, page)
-    return page
-end
+local AFKStatusLabel = Instance.new("TextLabel")
+AFKStatusLabel.Size = UDim2.new(1, -10, 0, 12)
+AFKStatusLabel.Position = UDim2.new(0, 5, 0, 17)
+AFKStatusLabel.BackgroundTransparency = 1
+AFKStatusLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+AFKStatusLabel.Text = "Anti-AFK Active"
+AFKStatusLabel.TextXAlignment = Enum.TextXAlignment.Center
+AFKStatusLabel.Font = Enum.Font.SourceSans
+AFKStatusLabel.TextSize = 9
+AFKStatusLabel.Parent = StatsBar
+
+local Div1 = Instance.new("Frame")
+Div1.Size = UDim2.new(1, 0, 0, 1)
+Div1.Position = UDim2.new(0, 0, 0, 65)
+Div1.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Div1.BorderSizePixel = 0
+Div1.Parent = MainFrame
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -20, 0, 18)
+StatusLabel.Position = UDim2.new(0, 10, 0, 70)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusLabel.Text = "● Ready"
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.Font = Enum.Font.SourceSans
+StatusLabel.TextSize = 11
+StatusLabel.Parent = MainFrame
+
+local Div2 = Instance.new("Frame")
+Div2.Size = UDim2.new(1, 0, 0, 1)
+Div2.Position = UDim2.new(0, 0, 0, 91)
+Div2.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Div2.BorderSizePixel = 0
+Div2.Parent = MainFrame
+
+local ControlsLabel = Instance.new("TextLabel")
+ControlsLabel.Size = UDim2.new(1, -20, 0, 16)
+ControlsLabel.Position = UDim2.new(0, 10, 0, 96)
+ControlsLabel.BackgroundTransparency = 1
+ControlsLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
+ControlsLabel.Text = "CONTROLS"
+ControlsLabel.TextXAlignment = Enum.TextXAlignment.Left
+ControlsLabel.Font = Enum.Font.SourceSansBold
+ControlsLabel.TextSize = 9
+ControlsLabel.Parent = MainFrame
+
+local FarmBtn = Instance.new("TextButton")
+FarmBtn.Size = UDim2.new(1, -20, 0, 34)
+FarmBtn.Position = UDim2.new(0, 10, 0, 113)
+FarmBtn.BackgroundColor3 = Color3.fromRGB(30, 130, 30)
+FarmBtn.BorderSizePixel = 0
+FarmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+FarmBtn.Text = "▶ START FARMING"
+FarmBtn.Font = Enum.Font.SourceSansBold
+FarmBtn.TextSize = 13
+FarmBtn.AutoButtonColor = false
+FarmBtn.Active = true
+FarmBtn.Parent = MainFrame
+
+local AFKBtn = Instance.new("TextButton")
+AFKBtn.Size = UDim2.new(1, -20, 0, 28)
+AFKBtn.Position = UDim2.new(0, 10, 0, 151)
+AFKBtn.BackgroundColor3 = Color3.fromRGB(30, 100, 30)
+AFKBtn.BorderSizePixel = 0
+AFKBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+AFKBtn.Text = "🔄 Anti AFK: ON"
+AFKBtn.Font = Enum.Font.SourceSans
+AFKBtn.TextSize = 12
+AFKBtn.AutoButtonColor = false
+AFKBtn.Active = true
+AFKBtn.Parent = MainFrame
+
+local Div3 = Instance.new("Frame")
+Div3.Size = UDim2.new(1, 0, 0, 1)
+Div3.Position = UDim2.new(0, 0, 0, 186)
+Div3.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Div3.BorderSizePixel = 0
+Div3.Parent = MainFrame
+
+local InfoRow = Instance.new("Frame")
+InfoRow.Size = UDim2.new(1, 0, 0, 18)
+InfoRow.Position = UDim2.new(0, 0, 0, 190)
+InfoRow.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+InfoRow.BorderSizePixel = 0
+InfoRow.Parent = MainFrame
+
+local SpeedInfo = Instance.new("TextLabel")
+SpeedInfo.Size = UDim2.new(0.33, -5, 1, 0)
+SpeedInfo.Position = UDim2.new(0, 8, 0, 0)
+SpeedInfo.BackgroundTransparency = 1
+SpeedInfo.TextColor3 = Color3.fromRGB(255, 200, 0)
+SpeedInfo.Text = "S:"..WalkSpeed
+SpeedInfo.Font = Enum.Font.SourceSans
+SpeedInfo.TextSize = 10
+SpeedInfo.Parent = InfoRow
+
+local JumpInfo = Instance.new("TextLabel")
+JumpInfo.Size = UDim2.new(0.33, -5, 1, 0)
+JumpInfo.Position = UDim2.new(0.33, 5, 0, 0)
+JumpInfo.BackgroundTransparency = 1
+JumpInfo.TextColor3 = Color3.fromRGB(255, 200, 0)
+JumpInfo.Text = "J:"..JumpPower
+JumpInfo.TextXAlignment = Enum.TextXAlignment.Center
+JumpInfo.Font = Enum.Font.SourceSans
+JumpInfo.TextSize = 10
+JumpInfo.Parent = InfoRow
+
+local RangeInfo = Instance.new("TextLabel")
+RangeInfo.Size = UDim2.new(0.33, -5, 1, 0)
+RangeInfo.Position = UDim2.new(0.66, 0, 0, 0)
+RangeInfo.BackgroundTransparency = 1
+RangeInfo.TextColor3 = Color3.fromRGB(255, 200, 0)
+RangeInfo.Text = "R:"..Range
+RangeInfo.TextXAlignment = Enum.TextXAlignment.Right
+RangeInfo.Font = Enum.Font.SourceSans
+RangeInfo.TextSize = 10
+RangeInfo.Parent = InfoRow
+
+local TermBtn = Instance.new("TextButton")
+TermBtn.Size = UDim2.new(1, -20, 0, 24)
+TermBtn.Position = UDim2.new(0, 10, 0, 212)
+TermBtn.BackgroundColor3 = Color3.fromRGB(100, 20, 20)
+TermBtn.BorderSizePixel = 0
+TermBtn.TextColor3 = Color3.fromRGB(255, 150, 150)
+TermBtn.Text = "⏏ TERMINATE"
+TermBtn.Font = Enum.Font.SourceSansBold
+TermBtn.TextSize = 11
+TermBtn.AutoButtonColor = false
+TermBtn.Active = true
+TermBtn.Parent = MainFrame
+
+local Footer = Instance.new("TextLabel")
+Footer.Size = UDim2.new(1, -20, 0, 14)
+Footer.Position = UDim2.new(0, 10, 0, 238)
+Footer.BackgroundTransparency = 1
+Footer.TextColor3 = Color3.fromRGB(80, 80, 80)
+Footer.Text = "by kibsss"
+Footer.TextXAlignment = Enum.TextXAlignment.Center
+Footer.Font = Enum.Font.SourceSans
+Footer.TextSize = 9
+Footer.Parent = MainFrame
 
 -- =============================================
--- UI HELPERS
+-- ANTI AFK - VirtualUser (Works PC + Mobile)
 -- =============================================
-local function CreateSection(parent, title, yPos)
-    local section = Instance.new("Frame")
-    section.Size = UDim2.new(1, -30, 0, 20)
-    section.Position = UDim2.new(0, 15, 0, yPos)
-    section.BackgroundTransparency = 1
-    section.Parent = parent
-    
-    local line = Instance.new("Frame")
-    line.Size = UDim2.new(1, 0, 0, 1)
-    line.Position = UDim2.new(0, 0, 0, 0)
-    line.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    line.BorderSizePixel = 0
-    line.Parent = section
-    
-    local text = Instance.new("TextLabel")
-    text.Size = UDim2.new(1, 0, 0, 16)
-    text.Position = UDim2.new(0, 0, 0, 3)
-    text.BackgroundTransparency = 1
-    text.TextColor3 = Color3.fromRGB(120, 120, 120)
-    text.Text = title
-    text.TextXAlignment = Enum.TextXAlignment.Left
-    text.Font = Enum.Font.GothamBold
-    text.TextSize = 9
-    text.Parent = section
-    
-    return section
-end
-
-local function CreateToggle(parent, title, default, yPos, callback)
-    local bgSize = isMobile and 34 or 30
-    local bg = Instance.new("Frame")
-    bg.Size = UDim2.new(1, -30, 0, bgSize)
-    bg.Position = UDim2.new(0, 15, 0, yPos)
-    bg.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    bg.BorderSizePixel = 0
-    bg.Parent = parent
-    
-    local bgCorner = Instance.new("UICorner")
-    bgCorner.CornerRadius = UDim.new(0, 4)
-    bgCorner.Parent = bg
-    
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.6, -10, 1, 0)
-    label.Position = UDim2.new(0, 10, 0, 0)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = Color3.fromRGB(200, 200, 200)
-    label.Text = title
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
-    label.TextSize = isMobile and 10 or 11
-    label.Parent = bg
-    
-    local state = default
-    
-    local switchSize = isMobile and 40 or 36
-    local switchHeight = isMobile and 20 or 18
-    local switch = Instance.new("TextButton")
-    switch.Size = UDim2.new(0, switchSize, 0, switchHeight)
-    switch.Position = UDim2.new(1, isMobile and -52 or -46, 0.5, isMobile and -10 or -9)
-    switch.BackgroundColor3 = state and Color3.fromRGB(60, 160, 60) or Color3.fromRGB(50, 50, 50)
-    switch.BorderSizePixel = 0
-    switch.Text = ""
-    switch.AutoButtonColor = false
-    switch.Active = true
-    switch.ZIndex = 10
-    switch.Parent = bg
-    
-    local switchCorner = Instance.new("UICorner")
-    switchCorner.CornerRadius = UDim.new(1, 0)
-    switchCorner.Parent = switch
-    
-    local dotSize = isMobile and 16 or 14
-    local dot = Instance.new("Frame")
-    dot.Size = UDim2.new(0, dotSize, 0, dotSize)
-    dot.Position = state and UDim2.new(1, isMobile and -18 or -16, 0.5, isMobile and -8 or -7) or UDim2.new(0, 2, 0.5, isMobile and -8 or -7)
-    dot.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    dot.BorderSizePixel = 0
-    dot.Parent = switch
-    
-    local dotCorner = Instance.new("UICorner")
-    dotCorner.CornerRadius = UDim.new(1, 0)
-    dotCorner.Parent = dot
-    
-    local function toggleSwitch()
-        state = not state
-        switch.BackgroundColor3 = state and Color3.fromRGB(60, 160, 60) or Color3.fromRGB(50, 50, 50)
-        local targetPos = state and UDim2.new(1, isMobile and -18 or -16, 0.5, isMobile and -8 or -7) or UDim2.new(0, 2, 0.5, isMobile and -8 or -7)
-        local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-        local tween = TweenService:Create(dot, tweenInfo, {Position = targetPos})
-        tween:Play()
-        callback(state)
+game:GetService("Players").LocalPlayer.Idled:connect(function()
+    if AntiAFKEnabled then
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
+        AFKStatusLabel.Text = "AFK Prevented!"
+        task.wait(2)
+        AFKStatusLabel.Text = "Anti-AFK Active"
     end
-    
-    -- Use Activated instead of MouseButton1Click (works on both PC and mobile)
-    switch.Activated:Connect(toggleSwitch)
-    
-    return bg
-end
-
-local function CreateButton(parent, title, yPos, callback)
-    local btnSize = isMobile and 36 or 32
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, -30, 0, btnSize)
-    btn.Position = UDim2.new(0, 15, 0, yPos)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    btn.BorderSizePixel = 0
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = title
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = isMobile and 10 or 11
-    btn.AutoButtonColor = false
-    btn.Active = true
-    btn.ZIndex = 10
-    btn.Parent = parent
-    
-    local btnCorner = Instance.new("UICorner")
-    btnCorner.CornerRadius = UDim.new(0, 4)
-    btnCorner.Parent = btn
-    
-    btn.Activated:Connect(callback)
-    
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    end)
-    
-    return btn
-end
-
-local function CreateInfoLabel(parent, text, yPos, color)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -30, 0, 18)
-    label.Position = UDim2.new(0, 15, 0, yPos)
-    label.BackgroundTransparency = 1
-    label.TextColor3 = color or Color3.fromRGB(200, 200, 200)
-    label.Text = text
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
-    label.TextSize = 10
-    label.Parent = parent
-    return label
-end
-
--- =============================================
--- CREATE TABS
--- =============================================
-local FarmPage = CreateTab("Farm", "⚔️", 1)
-local PlayerPage = CreateTab("Player", "👤", 2)
-local SettingsPage = CreateTab("Settings", "⚙️", 3)
-
--- =============================================
--- FARM TAB
--- =============================================
-CreateSection(FarmPage, "CONTROLS", 10)
-
-local FarmStatus = Instance.new("TextLabel")
-FarmStatus.Size = UDim2.new(1, -30, 0, 16)
-FarmStatus.Position = UDim2.new(0, 15, 0, isMobile and 36 or 34)
-FarmStatus.BackgroundTransparency = 1
-FarmStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
-FarmStatus.Text = "● Idle"
-FarmStatus.TextXAlignment = Enum.TextXAlignment.Left
-FarmStatus.Font = Enum.Font.Gotham
-FarmStatus.TextSize = 10
-FarmStatus.Parent = FarmPage
-
-CreateToggle(FarmPage, "AOE Farming", false, isMobile and 58 or 54, function(state)
-    Settings.Farming = state
-    FarmStatus.Text = state and "● Farming" or "● Idle"
-    FarmStatus.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
-end)
-
-CreateToggle(FarmPage, "Anti-AFK", true, isMobile and 96 or 88, function(state)
-    Settings.AntiAFK = state
-end)
-
-CreateSection(FarmPage, "INFO", isMobile and 138 or 130)
-
-local BountyDisplay = Instance.new("TextLabel")
-BountyDisplay.Size = UDim2.new(1, -30, 0, isMobile and 24 or 22)
-BountyDisplay.Position = UDim2.new(0, 15, 0, isMobile and 162 or 154)
-BountyDisplay.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-BountyDisplay.BorderSizePixel = 0
-BountyDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-BountyDisplay.Text = "💰 Bounty: Searching..."
-BountyDisplay.TextXAlignment = Enum.TextXAlignment.Left
-BountyDisplay.Font = Enum.Font.GothamBold
-BountyDisplay.TextSize = isMobile and 10 or 11
-BountyDisplay.Parent = FarmPage
-
-local BountyCorner = Instance.new("UICorner")
-BountyCorner.CornerRadius = UDim.new(0, 4)
-BountyCorner.Parent = BountyDisplay
-
-local NPCCount = Instance.new("TextLabel")
-NPCCount.Size = UDim2.new(1, -30, 0, 14)
-NPCCount.Position = UDim2.new(0, 15, 0, isMobile and 196 or 186)
-NPCCount.BackgroundTransparency = 1
-NPCCount.TextColor3 = Color3.fromRGB(140, 140, 140)
-NPCCount.Text = "NPCs in range: 0"
-NPCCount.TextXAlignment = Enum.TextXAlignment.Left
-NPCCount.Font = Enum.Font.Gotham
-NPCCount.TextSize = 9
-NPCCount.Parent = FarmPage
-
--- =============================================
--- PLAYER TAB
--- =============================================
-CreateSection(PlayerPage, "CHARACTER INFO", 10)
-
-local PlayerName = Instance.new("TextLabel")
-PlayerName.Size = UDim2.new(1, -30, 0, 20)
-PlayerName.Position = UDim2.new(0, 15, 0, 34)
-PlayerName.BackgroundTransparency = 1
-PlayerName.TextColor3 = Color3.fromRGB(255, 255, 255)
-PlayerName.Text = "👤 " .. LocalPlayer.Name
-PlayerName.TextXAlignment = Enum.TextXAlignment.Left
-PlayerName.Font = Enum.Font.GothamBold
-PlayerName.TextSize = 12
-PlayerName.Parent = PlayerPage
-
-local PlayerBounty = Instance.new("Frame")
-PlayerBounty.Size = UDim2.new(1, -30, 0, 40)
-PlayerBounty.Position = UDim2.new(0, 15, 0, 60)
-PlayerBounty.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-PlayerBounty.BorderSizePixel = 0
-PlayerBounty.Parent = PlayerPage
-
-local PlayerBountyCorner = Instance.new("UICorner")
-PlayerBountyCorner.CornerRadius = UDim.new(0, 4)
-PlayerBountyCorner.Parent = PlayerBounty
-
-local PlayerBountyLabel = Instance.new("TextLabel")
-PlayerBountyLabel.Size = UDim2.new(1, -20, 0, 14)
-PlayerBountyLabel.Position = UDim2.new(0, 10, 0, 5)
-PlayerBountyLabel.BackgroundTransparency = 1
-PlayerBountyLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-PlayerBountyLabel.Text = "BOUNTY"
-PlayerBountyLabel.TextXAlignment = Enum.TextXAlignment.Left
-PlayerBountyLabel.Font = Enum.Font.GothamBold
-PlayerBountyLabel.TextSize = 8
-PlayerBountyLabel.Parent = PlayerBounty
-
-local PlayerBountyValue = Instance.new("TextLabel")
-PlayerBountyValue.Size = UDim2.new(1, -20, 0, 18)
-PlayerBountyValue.Position = UDim2.new(0, 10, 0, 18)
-PlayerBountyValue.BackgroundTransparency = 1
-PlayerBountyValue.TextColor3 = Color3.fromRGB(255, 200, 0)
-PlayerBountyValue.Text = "Searching..."
-PlayerBountyValue.TextXAlignment = Enum.TextXAlignment.Left
-PlayerBountyValue.Font = Enum.Font.GothamBold
-PlayerBountyValue.TextSize = 13
-PlayerBountyValue.Parent = PlayerBounty
-
-CreateSection(PlayerPage, "HEALTH", 112)
-
-local HealthBarBg = Instance.new("Frame")
-HealthBarBg.Size = UDim2.new(1, -30, 0, 20)
-HealthBarBg.Position = UDim2.new(0, 15, 0, 136)
-HealthBarBg.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-HealthBarBg.BorderSizePixel = 0
-HealthBarBg.Parent = PlayerPage
-
-local HealthBarCorner = Instance.new("UICorner")
-HealthBarCorner.CornerRadius = UDim.new(0, 4)
-HealthBarCorner.Parent = HealthBarBg
-
-local HealthBar = Instance.new("Frame")
-HealthBar.Size = UDim2.new(1, 0, 1, 0)
-HealthBar.BackgroundColor3 = Color3.fromRGB(60, 200, 60)
-HealthBar.BorderSizePixel = 0
-HealthBar.Parent = HealthBarBg
-
-local HealthBarCorner2 = Instance.new("UICorner")
-HealthBarCorner2.CornerRadius = UDim.new(0, 4)
-HealthBarCorner2.Parent = HealthBar
-
-local HealthText = Instance.new("TextLabel")
-HealthText.Size = UDim2.new(1, 0, 1, 0)
-HealthText.BackgroundTransparency = 1
-HealthText.TextColor3 = Color3.fromRGB(255, 255, 255)
-HealthText.Text = "100%"
-HealthText.Font = Enum.Font.GothamBold
-HealthText.TextSize = 10
-HealthText.Parent = HealthBar
-
--- =============================================
--- SETTINGS TAB
--- =============================================
-CreateSection(SettingsPage, "PERMANENT STATS", 10)
-
-CreateInfoLabel(SettingsPage, "Farm Range: 30", 34, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(SettingsPage, "Walk Speed: 50", 54, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(SettingsPage, "Jump Power: 75", 74, Color3.fromRGB(255, 200, 0))
-CreateInfoLabel(SettingsPage, "FOV: 100", 94, Color3.fromRGB(255, 200, 0))
-
-CreateSection(SettingsPage, "TERMINATE", 126)
-
-CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 150, function()
-    ScriptActive = false
-    Settings.Farming = false
-    GUI:Destroy()
 end)
 
 -- =============================================
--- MINIMIZE TO ICON
+-- FUNCTIONS
 -- =============================================
-local function showMain()
-    Main.Visible = true
-    MinimizeIcon.Visible = false
-    Settings.Minimized = false
+
+-- Minimize (larger icon, draggable)
+local function toggleMinimize()
+    Minimized = not Minimized
+    MainFrame.Visible = not Minimized
+    if Minimized then
+        MinBtn.BackgroundColor3 = Color3.fromRGB(30, 130, 30)
+    else
+        MinBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    end
 end
 
-local function showIcon()
-    Main.Visible = false
-    MinimizeIcon.Visible = true
-    Settings.Minimized = true
-end
+-- Use Activated for both PC and mobile
+MinBtn.Activated:Connect(toggleMinimize)
+DashBtn.Activated:Connect(toggleMinimize)
 
-MinBtn.Activated:Connect(showIcon)
-MinimizeIcon.Activated:Connect(showMain)
+-- Make MinBtn draggable manually (works on mobile)
+local minDragging = false
+local minDragStart
+local minStartPos
 
--- Icon: tap to restore, drag to move
-local iconDragging = false
-local iconDragStart
-local iconStartPos
-local iconMoved = false
-
-MinimizeIcon.InputBegan:Connect(function(input)
+MinBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        iconDragging = true
-        iconMoved = false
-        iconDragStart = input.Position
-        iconStartPos = MinimizeIcon.Position
+        minDragging = true
+        minDragStart = input.Position
+        minStartPos = MinBtn.Position
+    end
+end)
+
+MinBtn.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        local delta = input.Position - minDragStart
+        if minDragging and math.abs(delta.X) < 5 and math.abs(delta.Y) < 5 then
+            -- Was a tap, toggle minimize
+            toggleMinimize()
+        end
+        minDragging = false
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - iconDragStart
-        if math.abs(delta.X) > 3 or math.abs(delta.Y) > 3 then
-            iconMoved = true
-        end
-        MinimizeIcon.Position = UDim2.new(iconStartPos.X.Scale, iconStartPos.X.Offset + delta.X, iconStartPos.Y.Scale, iconStartPos.Y.Offset + delta.Y)
+    if minDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - minDragStart
+        MinBtn.Position = UDim2.new(minStartPos.X.Scale, minStartPos.X.Offset + delta.X, minStartPos.Y.Scale, minStartPos.Y.Offset + delta.Y)
     end
 end)
 
-MinimizeIcon.InputEnded:Connect(function(input)
-    if iconDragging then
-        if not iconMoved then
-            showMain()
-        end
-        iconDragging = false
-    end
-end)
+-- Make main frame draggable
+local mainDragging = false
+local mainDragStart
+local mainStartPos
 
--- Main window draggable
-local dragActive = false
-local dragInput
-local dragStart
-local startPos
-
-TitleBar.InputBegan:Connect(function(input)
+Header.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragActive = true
-        dragStart = input.Position
-        startPos = Main.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragActive = false
-            end
-        end)
+        mainDragging = true
+        mainDragStart = input.Position
+        mainStartPos = MainFrame.Position
     end
 end)
 
-TitleBar.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
+Header.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        mainDragging = false
     end
 end)
 
-RunService.RenderStepped:Connect(function()
-    if dragActive and dragInput then
-        local delta = dragInput.Position - dragStart
-        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+UserInputService.InputChanged:Connect(function(input)
+    if mainDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - mainDragStart
+        MainFrame.Position = UDim2.new(mainStartPos.X.Scale, mainStartPos.X.Offset + delta.X, mainStartPos.Y.Scale, mainStartPos.Y.Offset + delta.Y)
     end
 end)
 
--- =============================================
--- ANTI AFK
--- =============================================
-LocalPlayer.Idled:connect(function()
-    if Settings.AntiAFK then
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-    end
+-- Farm toggle
+FarmBtn.Activated:Connect(function()
+    Farming = not Farming
+    FarmBtn.Text = Farming and "⏹ STOP FARMING" or "▶ START FARMING"
+    FarmBtn.BackgroundColor3 = Farming and Color3.fromRGB(150, 25, 25) or Color3.fromRGB(30, 130, 30)
+    StatusLabel.Text = Farming and "● Farming" or "● Ready"
+    StatusLabel.TextColor3 = Farming and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(180, 180, 180)
 end)
 
--- =============================================
--- UPDATE LOOPS
--- =============================================
+-- Anti AFK toggle
+AFKBtn.Activated:Connect(function()
+    AntiAFKEnabled = not AntiAFKEnabled
+    AFKBtn.Text = "🔄 Anti AFK: " .. (AntiAFKEnabled and "ON" or "OFF")
+    AFKBtn.BackgroundColor3 = AntiAFKEnabled and Color3.fromRGB(30, 100, 30) or Color3.fromRGB(60, 60, 60)
+    AFKStatusLabel.Text = AntiAFKEnabled and "Anti-AFK Active" or "Anti-AFK Disabled"
+    AFKStatusLabel.TextColor3 = AntiAFKEnabled and Color3.fromRGB(150, 255, 150) or Color3.fromRGB(255, 150, 150)
+end)
 
--- FPS
+-- Terminate
+TermBtn.Activated:Connect(function()
+    ScriptActive = false
+    Farming = false
+    getgenv().AntiAfkExecuted = false
+    getgenv().zamanbaslaticisi = false
+    ScreenGui:Destroy()
+end)
+
+-- FPS Update
 task.spawn(function()
     while ScriptActive do
         fpsCount = fpsCount + 1
@@ -774,146 +418,94 @@ task.spawn(function()
             fps = math.floor(fpsCount / (tick() - lastFPSUpdate))
             fpsCount = 0
             lastFPSUpdate = tick()
-            FPSDisplay.Text = "FPS: " .. fps
-            FPSDisplay.TextColor3 = fps >= 50 and Color3.fromRGB(0, 255, 100) or (fps >= 25 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 80, 80))
+            FPSLabel.Text = "FPS: " .. fps
+            FPSLabel.TextColor3 = fps >= 50 and Color3.fromRGB(0, 255, 100) or (fps >= 25 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 80, 80))
         end
         task.wait()
     end
 end)
 
--- Ping
+-- Ping Update
 task.spawn(function()
     while ScriptActive do
         pcall(function()
             local ping = math.floor(LocalPlayer:GetNetworkPing() * 1000)
-            PingDisplay.Text = "Ping: " .. ping .. "ms"
-            PingDisplay.TextColor3 = ping <= 80 and Color3.fromRGB(100, 200, 255) or (ping <= 150 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 100, 100))
+            PingLabel.Text = "Ping: " .. ping .. "ms"
+            PingLabel.TextColor3 = ping <= 80 and Color3.fromRGB(100, 200, 255) or (ping <= 150 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 100, 100))
         end)
         task.wait(1)
     end
 end)
 
--- Timer
+-- Timer Update
 task.spawn(function()
     while ScriptActive do
-        saniye = saniye + 1
-        if saniye >= 60 then saniye = 0; dakika = dakika + 1 end
-        if dakika >= 60 then dakika = 0; saat = saat + 1 end
-        TimerDisplay.Text = saat .. ":" .. dakika .. ":" .. saniye
-        task.wait(1)
-    end
-end)
-
--- Bounty
-task.spawn(function()
-    while ScriptActive do
-        local bounty = scanBounty()
-        if bounty then
-            CurrentBounty = bounty
-            BountyDisplay.Text = "💰 Bounty: " .. bounty
-            PlayerBountyValue.Text = bounty
-        else
-            BountyDisplay.Text = "💰 Bounty: Not found"
-            PlayerBountyValue.Text = "Not found"
+        if getgenv().zamanbaslaticisi then
+            saniye = saniye + 1
+            if saniye >= 60 then saniye = 0; dakika = dakika + 1 end
+            if dakika >= 60 then dakika = 0; saat = saat + 1 end
+            TimerLabel.Text = saat..":"..dakika..":"..saniye
         end
-        task.wait(3)
+        task.wait(1)
     end
 end)
 
--- Health
-task.spawn(function()
-    while ScriptActive do
-        pcall(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Humanoid") then
-                local hp = char.Humanoid.Health
-                local maxHP = char.Humanoid.MaxHealth
-                local percent = hp / maxHP
-                HealthBar.Size = UDim2.new(percent, 0, 1, 0)
-                HealthText.Text = math.floor(percent * 100) .. "%"
-                HealthBar.BackgroundColor3 = percent > 0.5 and Color3.fromRGB(60, 200, 60) or (percent > 0.25 and Color3.fromRGB(255, 200, 0) or Color3.fromRGB(255, 50, 50))
-            end
-        end)
-        task.wait(0.3)
-    end
-end)
+-- Apply stats
+local function applyStats()
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local h = char:FindFirstChild("Humanoid")
+            if h then h.WalkSpeed = WalkSpeed; h.JumpPower = JumpPower end
+        end
+        local cam = workspace.CurrentCamera
+        if cam then cam.FieldOfView = FOV end
+    end)
+end
+LocalPlayer.CharacterAdded:Connect(function() task.wait(0.5) applyStats() end)
+task.spawn(function() while ScriptActive do applyStats() task.wait(1) end end)
 
--- NPC Counter
-task.spawn(function()
-    while ScriptActive do
-        local count = 0
-        pcall(function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local root = char.HumanoidRootPart
-                local npcFolder = Workspace:FindFirstChild("NPCs")
-                if npcFolder then
-                    for _, obj in pairs(npcFolder:GetChildren()) do
-                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                            local npcRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
-                            if npcRoot and (root.Position - npcRoot.Position).Magnitude <= PERMANENT.Range then
-                                count = count + 1
-                            end
-                        end
-                    end
+-- Get NPCs
+local function getNPCsInRange()
+    local char = LocalPlayer.Character
+    if not char then return {} end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return {} end
+    local nearby = {}
+    local npcFolder = Workspace:FindFirstChild("NPCs")
+    if npcFolder then
+        for _, obj in pairs(npcFolder:GetChildren()) do
+            if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
+                local npcRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
+                if npcRoot then
+                    local dist = (root.Position - npcRoot.Position).Magnitude
+                    if dist <= Range then table.insert(nearby, {root = npcRoot, dist = dist}) end
                 end
             end
-        end)
-        NPCCount.Text = "NPCs in range: " .. count
-        task.wait(0.5)
+        end
     end
-end)
-
--- Apply Permanent Stats
-task.spawn(function()
-    while ScriptActive do
-        pcall(function()
-            local char = LocalPlayer.Character
-            if char then
-                local h = char:FindFirstChild("Humanoid")
-                if h then
-                    h.WalkSpeed = PERMANENT.WalkSpeed
-                    h.JumpPower = PERMANENT.JumpPower
-                end
-            end
-            workspace.CurrentCamera.FieldOfView = PERMANENT.FOV
-        end)
-        task.wait(0.5)
-    end
-end)
+    table.sort(nearby, function(a, b) return a.dist < b.dist end)
+    return nearby
+end
 
 -- AOE Farm
 task.spawn(function()
     while ScriptActive do
-        if Settings.Farming then
+        if Farming then
             pcall(function()
                 local char = LocalPlayer.Character
                 if not char then return end
-                local root = char:FindFirstChild("HumanoidRootPart")
-                if not root then return end
-                
-                local npcs = {}
-                local npcFolder = Workspace:FindFirstChild("NPCs")
-                if npcFolder then
-                    for _, obj in pairs(npcFolder:GetChildren()) do
-                        if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj.Humanoid.Health > 0 then
-                            local npcRoot = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head")
-                            if npcRoot then
-                                local dist = (root.Position - npcRoot.Position).Magnitude
-                                if dist <= PERMANENT.Range then
-                                    table.insert(npcs, {root = npcRoot, dist = dist})
-                                end
-                            end
+                local npcs = getNPCsInRange()
+                if #npcs > 0 then
+                    for _, npc in pairs(npcs) do
+                        local myRoot = char:FindFirstChild("HumanoidRootPart")
+                        if myRoot then
+                            myRoot.CFrame = CFrame.lookAt(myRoot.Position, Vector3.new(npc.root.Position.X, myRoot.Position.Y, npc.root.Position.Z))
+                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                            task.wait(0.05)
+                            VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                         end
                     end
-                end
-                table.sort(npcs, function(a, b) return a.dist < b.dist end)
-                
-                for _, npc in pairs(npcs) do
-                    root.CFrame = CFrame.lookAt(root.Position, Vector3.new(npc.root.Position.X, root.Position.Y, npc.root.Position.Z))
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-                    task.wait(0.05)
-                    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
                 end
             end)
         end
@@ -921,4 +513,5 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | FIXED TOGGLES | PC + Mobile | Auto Bounty")
+applyStats()
+print("Ready! by kibsss | Anti-AFK: VirtualUser | Farm + Stats + Timer | PC + Mobile")
