@@ -141,8 +141,8 @@ GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 local mainWidth = 500
 local mainHeight = 320
 if isMobile then
-    mainWidth = 480
-    mainHeight = 340
+    mainWidth = 380
+    mainHeight = 240
 end
 
 -- Main Container
