@@ -1,5 +1,5 @@
 --[[
-    Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO ICON)
+    Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO TEXT)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
     Permanent Stats | FPS/Ping/Time on Title Bar | Auto Bounty Display
     PC + Mobile Support | FIXED TOGGLES
@@ -51,8 +51,8 @@ if getgenv().SailorPieceLoaded then
     if game.CoreGui:FindFirstChild("SailorPieceGUI") then
         game.CoreGui.SailorPieceGUI:Destroy()
     end
-    if game.CoreGui:FindFirstChild("MinimizeIcon") then
-        game.CoreGui.MinimizeIcon:Destroy()
+    if game.CoreGui:FindFirstChild("MinimizeText") then
+        game.CoreGui.MinimizeText:Destroy()
     end
 end
 getgenv().SailorPieceLoaded = true
@@ -104,25 +104,6 @@ local function scanBounty()
                 end
             end
         end
-        
-        if not bounty then
-            for _, child in pairs(Workspace:GetChildren()) do
-                if child:IsA("Model") and child:FindFirstChild("Head") then
-                    local billboard = child.Head:FindFirstChild("BillboardGui")
-                    if billboard then
-                        for _, element in pairs(billboard:GetDescendants()) do
-                            if element:IsA("TextLabel") and string.find(string.lower(element.Text or ""), "bounty") then
-                                local number = string.match(element.Text, "[%d,]+")
-                                if number then
-                                    bounty = number
-                                    break
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-        end
     end)
     
     return bounty
@@ -159,26 +140,26 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = Main
 
--- Minimize Icon (RED)
-local MinimizeIcon = Instance.new("TextButton")
-MinimizeIcon.Name = "MinimizeIcon"
-MinimizeIcon.Size = UDim2.new(0, isMobile and 55 or 45, 0, isMobile and 55 or 45)
-MinimizeIcon.Position = UDim2.new(0, 10, 0, isMobile and 140 or 80)
-MinimizeIcon.BackgroundColor3 = Color3.fromRGB(180, 25, 25)
-MinimizeIcon.BorderSizePixel = 0
-MinimizeIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinimizeIcon.Text = "⚔️"
-MinimizeIcon.Font = Enum.Font.GothamBold
-MinimizeIcon.TextSize = isMobile and 24 or 20
-MinimizeIcon.AutoButtonColor = false
-MinimizeIcon.Visible = false
-MinimizeIcon.Active = true
-MinimizeIcon.ZIndex = 10
-MinimizeIcon.Parent = GUI
+-- Minimize Text Button (Script by Maryyy v1)
+local MinimizeText = Instance.new("TextButton")
+MinimizeText.Name = "MinimizeText"
+MinimizeText.Size = UDim2.new(0, isMobile and 200 or 180, 0, isMobile and 50 or 40)
+MinimizeText.Position = UDim2.new(0, 10, 0, isMobile and 140 or 80)
+MinimizeText.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MinimizeText.BorderSizePixel = 0
+MinimizeText.TextColor3 = Color3.fromRGB(255, 200, 100)
+MinimizeText.Text = "📜 Script by Maryyy v1"
+MinimizeText.Font = Enum.Font.GothamBold
+MinimizeText.TextSize = isMobile and 16 or 14
+MinimizeText.AutoButtonColor = false
+MinimizeText.Visible = false
+MinimizeText.Active = true
+MinimizeText.ZIndex = 10
+MinimizeText.Parent = GUI
 
-local IconCorner = Instance.new("UICorner")
-IconCorner.CornerRadius = UDim.new(0, 8)
-IconCorner.Parent = MinimizeIcon
+local TextCorner = Instance.new("UICorner")
+TextCorner.CornerRadius = UDim.new(0, 8)
+TextCorner.Parent = MinimizeText
 
 -- Title Bar
 local TitleBar = Instance.new("Frame")
@@ -454,7 +435,6 @@ local function CreateToggle(parent, title, default, yPos, callback)
         callback(state)
     end
     
-    -- Use Activated instead of MouseButton1Click (works on both PC and mobile)
     switch.Activated:Connect(toggleSwitch)
     
     return bg
@@ -481,13 +461,6 @@ local function CreateButton(parent, title, yPos, callback)
     btnCorner.Parent = btn
     
     btn.Activated:Connect(callback)
-    
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    end)
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    end)
     
     return btn
 end
@@ -668,54 +641,54 @@ CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 150, function()
 end)
 
 -- =============================================
--- MINIMIZE TO ICON
+-- MINIMIZE TO TEXT
 -- =============================================
 local function showMain()
     Main.Visible = true
-    MinimizeIcon.Visible = false
+    MinimizeText.Visible = false
     Settings.Minimized = false
 end
 
-local function showIcon()
+local function showText()
     Main.Visible = false
-    MinimizeIcon.Visible = true
+    MinimizeText.Visible = true
     Settings.Minimized = true
 end
 
-MinBtn.Activated:Connect(showIcon)
-MinimizeIcon.Activated:Connect(showMain)
+MinBtn.Activated:Connect(showText)
+MinimizeText.Activated:Connect(showMain)
 
--- Icon: tap to restore, drag to move
-local iconDragging = false
-local iconDragStart
-local iconStartPos
-local iconMoved = false
+-- Text button: tap to restore, drag to move
+local textDragging = false
+local textDragStart
+local textStartPos
+local textMoved = false
 
-MinimizeIcon.InputBegan:Connect(function(input)
+MinimizeText.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        iconDragging = true
-        iconMoved = false
-        iconDragStart = input.Position
-        iconStartPos = MinimizeIcon.Position
+        textDragging = true
+        textMoved = false
+        textDragStart = input.Position
+        textStartPos = MinimizeText.Position
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - iconDragStart
+    if textDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - textDragStart
         if math.abs(delta.X) > 3 or math.abs(delta.Y) > 3 then
-            iconMoved = true
+            textMoved = true
         end
-        MinimizeIcon.Position = UDim2.new(iconStartPos.X.Scale, iconStartPos.X.Offset + delta.X, iconStartPos.Y.Scale, iconStartPos.Y.Offset + delta.Y)
+        MinimizeText.Position = UDim2.new(textStartPos.X.Scale, textStartPos.X.Offset + delta.X, textStartPos.Y.Scale, textStartPos.Y.Offset + delta.Y)
     end
 end)
 
-MinimizeIcon.InputEnded:Connect(function(input)
-    if iconDragging then
-        if not iconMoved then
+MinimizeText.InputEnded:Connect(function(input)
+    if textDragging then
+        if not textMoved then
             showMain()
         end
-        iconDragging = false
+        textDragging = false
     end
 end)
 
@@ -921,4 +894,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | FIXED TOGGLES | PC + Mobile | Auto Bounty")
+print("✅ Sailor Piece GUI Loaded! | Text Minimize | PC + Mobile | Auto Bounty")
