@@ -33,9 +33,8 @@ local Settings = {
     Farming = false,
     AntiAFK = true,
     Minimized = false,
-    AutoRaid = false,
-    AutoPullLever = true,
-    AutoAttackBoss = true
+    AutoPullLever = false,
+    AutoAttackBoss = false
 }
 
 local ScriptActive = true
@@ -52,6 +51,7 @@ local CurrentBounty = "Searching..."
 -- Raid Variables
 local RaidStatus = "Idle"
 local LastPullTime = 0
+local isPullingLever = false
 
 -- Clean up
 if getgenv().SailorPieceLoaded then
@@ -123,20 +123,14 @@ end
 local function findMinotaurBoss()
     local boss = nil
     pcall(function()
-        local bossNames = {"Minotaur", "minotaur", "MINOTAUR", "MinotaurBoss", "Minotaur Boss"}
-        
         local function searchIn(parent)
             for _, obj in pairs(parent:GetChildren()) do
-                if obj:IsA("Model") then
-                    for _, name in pairs(bossNames) do
-                        if string.find(string.lower(obj.Name), string.lower(name)) then
-                            local humanoid = obj:FindFirstChild("Humanoid")
-                            local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
-                            if humanoid and humanoid.Health > 0 and rootPart then
-                                boss = {model = obj, humanoid = humanoid, rootPart = rootPart}
-                                return true
-                            end
-                        end
+                if obj:IsA("Model") and string.lower(obj.Name) == "minotaur" then
+                    local humanoid = obj:FindFirstChild("Humanoid")
+                    local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
+                    if humanoid and humanoid.Health > 0 and rootPart then
+                        boss = {model = obj, humanoid = humanoid, rootPart = rootPart}
+                        return true
                     end
                 end
             end
@@ -161,13 +155,14 @@ local function findLever()
     pcall(function()
         local leverNames = {"Lever", "lever", "LEVER", "Switch", "switch", "Pull", "Handle"}
         
+        -- First check for ProximityPrompts (most common for levers)
         for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+            if obj:IsA("ProximityPrompt") then
                 local parent = obj.Parent
                 if parent then
                     for _, name in pairs(leverNames) do
                         if string.find(string.lower(parent.Name), string.lower(name)) then
-                            lever = parent
+                            lever = {object = parent, prompt = obj}
                             return lever
                         end
                     end
@@ -175,12 +170,32 @@ local function findLever()
             end
         end
         
-        -- Search for lever models
+        -- Search for ClickDetectors
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ClickDetector") then
+                local parent = obj.Parent
+                if parent then
+                    for _, name in pairs(leverNames) do
+                        if string.find(string.lower(parent.Name), string.lower(name)) then
+                            lever = {object = parent, clickDetector = obj}
+                            return lever
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Search for lever models/parts
         for _, obj in pairs(Workspace:GetDescendants()) do
             if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("BasePart") then
                 for _, name in pairs(leverNames) do
                     if string.find(string.lower(obj.Name), string.lower(name)) then
-                        lever = obj
+                        local prompt = obj:FindFirstChild("ProximityPrompt")
+                        if prompt then
+                            lever = {object = obj, prompt = prompt}
+                        else
+                            lever = {object = obj}
+                        end
                         return lever
                     end
                 end
@@ -205,34 +220,8 @@ local function moveToTarget(targetPosition)
         return true
     end
     
-    -- Use pathfinding
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        Costs = {}
-    })
-    
-    local success, errorMessage = pcall(function()
-        path:ComputeAsync(root.Position, targetPosition)
-    end)
-    
-    if success and path.Status == Enum.PathStatus.Success then
-        local waypoints = path:GetWaypoints()
-        for _, waypoint in pairs(waypoints) do
-            if not Settings.AutoRaid then return false end
-            if waypoint.Action == Enum.PathWaypointAction.Jump then
-                humanoid.Jump = true
-            end
-            humanoid:MoveTo(waypoint.Position)
-            humanoid.MoveToFinished:Wait()
-        end
-        return true
-    else
-        -- Fallback to direct movement
-        humanoid:MoveTo(targetPosition)
-        return true
-    end
+    humanoid:MoveTo(targetPosition)
+    return true
 end
 
 local function attackTarget(targetRootPart)
@@ -250,6 +239,14 @@ local function attackTarget(targetRootPart)
     VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
 end
 
+local function longPressE(duration)
+    -- Press E key
+    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
+    task.wait(duration)
+    -- Release E key
+    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+end
+
 local function pullLever(lever)
     pcall(function()
         local char = LocalPlayer.Character
@@ -258,36 +255,41 @@ local function pullLever(lever)
         if not root then return end
         
         local leverPosition
-        if lever:IsA("Model") then
-            leverPosition = lever:GetPivot().Position
+        if lever.object:IsA("Model") then
+            leverPosition = lever.object:GetPivot().Position
         else
-            leverPosition = lever.Position
+            leverPosition = lever.object.Position
         end
         
         -- Move to lever
         moveToTarget(leverPosition)
         task.wait(0.5)
         
-        -- Pull the lever
-        local prompt = lever:FindFirstChild("ProximityPrompt")
-        if prompt then
-            fireproximityprompt(prompt)
+        -- Fire proximity prompt first
+        if lever.prompt then
+            fireproximityprompt(lever.prompt)
         end
         
-        local clickDetector = lever:FindFirstChild("ClickDetector")
-        if clickDetector then
-            fireclickdetector(clickDetector)
+        -- Fire click detector if exists
+        if lever.clickDetector then
+            fireclickdetector(lever.clickDetector)
         end
         
-        -- Try clicking near the lever
-        if lever:IsA("BasePart") then
-            local clickPos = lever.Position
+        -- Long press E for lever interaction
+        RaidStatus = "Pressing E..."
+        RaidStatusDisplay.Text = "🏛️ Status: Holding E..."
+        longPressE(1.5)
+        
+        -- Also try clicking
+        if lever.object:IsA("BasePart") then
+            local clickPos = lever.object.Position
             VirtualInputManager:SendMouseButtonEvent(clickPos.X, clickPos.Y, 0, true, game, 0)
             task.wait(0.1)
             VirtualInputManager:SendMouseButtonEvent(clickPos.X, clickPos.Y, 0, false, game, 0)
         end
         
         LastPullTime = tick()
+        isPullingLever = false
     end)
 end
 
@@ -302,17 +304,17 @@ GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Adjust size for mobile
 local mainWidth = 500
-local mainHeight = 370
+local mainHeight = 350
 if isMobile then
     mainWidth = 380
-    mainHeight = 280
+    mainHeight = 270
 end
 
 -- Main Container
 local Main = Instance.new("Frame")
 Main.Name = "MainFrame"
 Main.Size = UDim2.new(0, mainWidth, 0, mainHeight)
-Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -185)
+Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -175)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -747,32 +749,11 @@ local RaidCorner = Instance.new("UICorner")
 RaidCorner.CornerRadius = UDim.new(0, 4)
 RaidCorner.Parent = RaidStatusDisplay
 
-CreateToggle(RaidPage, "Auto Raid", false, 82, function(state)
-    Settings.AutoRaid = state
-    if state then
-        RaidStatus = "Starting..."
-        RaidStatusDisplay.Text = "🏛️ Status: Starting..."
-        RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-    else
-        RaidStatus = "Idle"
-        RaidStatusDisplay.Text = "🏛️ Status: Idle"
-        RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-    end
-end)
-
-CreateToggle(RaidPage, "Auto Pull Lever", true, 120, function(state)
-    Settings.AutoPullLever = state
-end)
-
-CreateToggle(RaidPage, "Auto Attack Boss", true, 158, function(state)
-    Settings.AutoAttackBoss = state
-end)
-
-CreateSection(RaidPage, "BOSS INFO", 200)
+CreateSection(RaidPage, "BOSS INFO", 82)
 
 local BossHealth = Instance.new("TextLabel")
 BossHealth.Size = UDim2.new(1, -30, 0, 18)
-BossHealth.Position = UDim2.new(0, 15, 0, 224)
+BossHealth.Position = UDim2.new(0, 15, 0, 106)
 BossHealth.BackgroundTransparency = 1
 BossHealth.TextColor3 = Color3.fromRGB(255, 100, 100)
 BossHealth.Text = "👹 Boss: Not found"
@@ -783,7 +764,7 @@ BossHealth.Parent = RaidPage
 
 local BossDistance = Instance.new("TextLabel")
 BossDistance.Size = UDim2.new(1, -30, 0, 18)
-BossDistance.Position = UDim2.new(0, 15, 0, 242)
+BossDistance.Position = UDim2.new(0, 15, 0, 124)
 BossDistance.BackgroundTransparency = 1
 BossDistance.TextColor3 = Color3.fromRGB(200, 200, 200)
 BossDistance.Text = "📏 Distance: N/A"
@@ -794,7 +775,7 @@ BossDistance.Parent = RaidPage
 
 local LeverStatus = Instance.new("TextLabel")
 LeverStatus.Size = UDim2.new(1, -30, 0, 18)
-LeverStatus.Position = UDim2.new(0, 15, 0, 260)
+LeverStatus.Position = UDim2.new(0, 15, 0, 142)
 LeverStatus.BackgroundTransparency = 1
 LeverStatus.TextColor3 = Color3.fromRGB(200, 200, 200)
 LeverStatus.Text = "🔧 Lever: Searching..."
@@ -803,22 +784,98 @@ LeverStatus.Font = Enum.Font.Gotham
 LeverStatus.TextSize = 10
 LeverStatus.Parent = RaidPage
 
-CreateSection(RaidPage, "CONTROLS", 290)
+CreateSection(RaidPage, "MANUAL CONTROLS", 172)
 
-CreateButton(RaidPage, "🔄 Find & Pull Lever", 314, function()
-    local lever = findLever()
-    if lever then
-        RaidStatus = "Pulling lever..."
-        RaidStatusDisplay.Text = "🏛️ Status: Pulling lever..."
-        task.spawn(function()
+CreateButton(RaidPage, "🔄 Find & Pull Lever (Hold E)", 196, function()
+    if isPullingLever then return end
+    isPullingLever = true
+    task.spawn(function()
+        local lever = findLever()
+        if lever then
+            RaidStatus = "Pulling lever..."
+            RaidStatusDisplay.Text = "🏛️ Status: Pulling lever..."
+            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
             pullLever(lever)
-            RaidStatus = "Lever pulled"
-            RaidStatusDisplay.Text = "🏛️ Status: Lever pulled ✅"
-        end)
-    else
-        RaidStatus = "Lever not found"
-        RaidStatusDisplay.Text = "🏛️ Status: Lever not found"
-    end
+            RaidStatus = "Lever pulled!"
+            RaidStatusDisplay.Text = "🏛️ Status: Lever pulled! ✅"
+            RaidStatusDisplay.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            RaidStatus = "Lever not found!"
+            RaidStatusDisplay.Text = "🏛️ Status: Lever not found! ❌"
+            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+        isPullingLever = false
+    end)
+end)
+
+CreateButton(RaidPage, "⚔️ Walk & Attack Minotaur", 236, function()
+    task.spawn(function()
+        local boss = findMinotaurBoss()
+        if boss then
+            RaidStatus = "Moving to Minotaur..."
+            RaidStatusDisplay.Text = "🏛️ Status: Moving to Minotaur..."
+            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
+            
+            moveToTarget(boss.rootPart.Position)
+            
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local dist = (char.HumanoidRootPart.Position - boss.rootPart.Position).Magnitude
+                if dist <= 15 then
+                    RaidStatus = "Attacking Minotaur!"
+                    RaidStatusDisplay.Text = "🏛️ Status: Attacking Minotaur! ⚔️"
+                    RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
+                    
+                    for i = 1, 10 do
+                        if boss.humanoid.Health <= 0 then break end
+                        attackTarget(boss.rootPart)
+                        task.wait(0.3)
+                    end
+                    
+                    if boss.humanoid.Health <= 0 then
+                        RaidStatus = "Minotaur defeated!"
+                        RaidStatusDisplay.Text = "🏛️ Status: Minotaur defeated! 🎉"
+                        RaidStatusDisplay.TextColor3 = Color3.fromRGB(100, 255, 100)
+                    end
+                end
+            end
+        else
+            RaidStatus = "Minotaur not found!"
+            RaidStatusDisplay.Text = "🏛️ Status: Minotaur not found! ❌"
+            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+    end)
+end)
+
+CreateButton(RaidPage, "🔄 Refresh Info", 276, function()
+    task.spawn(function()
+        local boss = findMinotaurBoss()
+        if boss then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local dist = math.floor((char.HumanoidRootPart.Position - boss.rootPart.Position).Magnitude)
+                local hp = math.floor((boss.humanoid.Health / boss.humanoid.MaxHealth) * 100)
+                BossHealth.Text = "👹 Boss: Minotaur | HP: " .. hp .. "%"
+                BossDistance.Text = "📏 Distance: " .. dist .. "m"
+            end
+            RaidStatusDisplay.Text = "🏛️ Status: Minotaur found!"
+            RaidStatusDisplay.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            BossHealth.Text = "👹 Boss: Not found"
+            BossDistance.Text = "📏 Distance: N/A"
+            RaidStatusDisplay.Text = "🏛️ Status: Minotaur not found"
+            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+        
+        local lever = findLever()
+        if lever then
+            LeverStatus.Text = "🔧 Lever: Found ✅"
+            LeverStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            LeverStatus.Text = "🔧 Lever: Not found"
+            LeverStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+    end)
 end)
 
 -- =============================================
@@ -917,7 +974,6 @@ CreateSection(SettingsPage, "TERMINATE", 126)
 CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 150, function()
     ScriptActive = false
     Settings.Farming = false
-    Settings.AutoRaid = false
     GUI:Destroy()
 end)
 
@@ -1118,46 +1174,6 @@ task.spawn(function()
     end
 end)
 
--- Raid Status Update
-task.spawn(function()
-    while ScriptActive do
-        if Settings.AutoRaid then
-            pcall(function()
-                local boss = findMinotaurBoss()
-                if boss then
-                    local char = LocalPlayer.Character
-                    if char and char:FindFirstChild("HumanoidRootPart") then
-                        local dist = math.floor((char.HumanoidRootPart.Position - boss.rootPart.Position).Magnitude)
-                        local hp = math.floor((boss.humanoid.Health / boss.humanoid.MaxHealth) * 100)
-                        BossHealth.Text = "👹 Boss: Minotaur | HP: " .. hp .. "%"
-                        BossDistance.Text = "📏 Distance: " .. dist .. "m"
-                        
-                        if hp <= 0 then
-                            BossHealth.Text = "👹 Boss: Defeated! ✅"
-                            BossHealth.TextColor3 = Color3.fromRGB(100, 255, 100)
-                        else
-                            BossHealth.TextColor3 = Color3.fromRGB(255, 100, 100)
-                        end
-                    end
-                else
-                    BossHealth.Text = "👹 Boss: Not found"
-                    BossDistance.Text = "📏 Distance: N/A"
-                end
-                
-                local lever = findLever()
-                if lever then
-                    LeverStatus.Text = "🔧 Lever: Found ✅"
-                    LeverStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
-                else
-                    LeverStatus.Text = "🔧 Lever: Not found"
-                    LeverStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
-                end
-            end)
-        end
-        task.wait(1)
-    end
-end)
-
 -- Apply Permanent Stats
 task.spawn(function()
     while ScriptActive do
@@ -1215,60 +1231,4 @@ task.spawn(function()
     end
 end)
 
--- Auto Raid System
-task.spawn(function()
-    while ScriptActive do
-        if Settings.AutoRaid then
-            pcall(function()
-                local char = LocalPlayer.Character
-                if not char then return end
-                local root = char:FindFirstChild("HumanoidRootPart")
-                if not root then return end
-                
-                -- Step 1: Find and pull lever if enabled
-                if Settings.AutoPullLever and tick() - LastPullTime > 5 then
-                    local lever = findLever()
-                    if lever then
-                        RaidStatus = "Pulling lever..."
-                        RaidStatusDisplay.Text = "🏛️ Status: Pulling lever..."
-                        pullLever(lever)
-                        RaidStatus = "Lever pulled"
-                        RaidStatusDisplay.Text = "🏛️ Status: Lever pulled ✅"
-                        task.wait(2)
-                    end
-                end
-                
-                -- Step 2: Find and attack boss if enabled
-                if Settings.AutoAttackBoss then
-                    local boss = findMinotaurBoss()
-                    if boss and boss.humanoid.Health > 0 then
-                        RaidStatus = "Moving to boss..."
-                        RaidStatusDisplay.Text = "🏛️ Status: Moving to boss..."
-                        
-                        moveToTarget(boss.rootPart.Position)
-                        
-                        if (root.Position - boss.rootPart.Position).Magnitude <= 15 then
-                            RaidStatus = "Attacking boss!"
-                            RaidStatusDisplay.Text = "🏛️ Status: Attacking boss! ⚔️"
-                            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
-                            
-                            for i = 1, 10 do
-                                if not Settings.AutoRaid then break end
-                                if boss.humanoid.Health <= 0 then break end
-                                attackTarget(boss.rootPart)
-                                task.wait(0.3)
-                            end
-                        end
-                    else
-                        RaidStatus = "Waiting for boss..."
-                        RaidStatusDisplay.Text = "🏛️ Status: Waiting for boss..."
-                        RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-                    end
-                end
-            end)
-        end
-        task.wait(2)
-    end
-end)
-
-print("✅ Sailor Piece GUI Loaded! | Raid System | Text Minimize | PC + Mobile | Auto Bounty")
+print("✅ Sailor Piece GUI Loaded! | Minotaur Raid | Hold E Lever | PC + Mobile | Auto Bounty")
