@@ -2,7 +2,7 @@
     Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO TEXT)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
     Permanent Stats | FPS/Ping/Time on Title Bar | Auto Bounty Display
-    PC + Mobile Support | FIXED TOGGLES
+    PC + Mobile Support | FIXED TOGGLES | RAID SYSTEM
 --]]
 
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
@@ -15,6 +15,7 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local PathfindingService = game:GetService("PathfindingService")
 
 -- Detect platform
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -31,7 +32,10 @@ local PERMANENT = {
 local Settings = {
     Farming = false,
     AntiAFK = true,
-    Minimized = false
+    Minimized = false,
+    AutoRaid = false,
+    AutoPullLever = true,
+    AutoAttackBoss = true
 }
 
 local ScriptActive = true
@@ -44,6 +48,12 @@ local saniye, dakika, saat = 0, 0, 0
 
 -- Bounty
 local CurrentBounty = "Searching..."
+
+-- Raid Variables
+local RaidStatus = "Idle"
+local BossTarget = nil
+local LeverTarget = nil
+local LastPullTime = 0
 
 -- Clean up
 if getgenv().SailorPieceLoaded then
@@ -110,27 +120,200 @@ local function scanBounty()
 end
 
 -- =============================================
+-- RAID FUNCTIONS
+-- =============================================
+local function findMinotaurBoss()
+    local boss = nil
+    pcall(function()
+        -- Search in various possible locations
+        local folders = {"Bosses", "Enemies", "NPCs", "Mobs", "Raids"}
+        local bossNames = {"Minotaur", "minotaur", "MINOTAUR", "MinotaurBoss", "Minotaur Boss"}
+        
+        for _, folderName in pairs(folders) do
+            local folder = Workspace:FindFirstChild(folderName)
+            if folder then
+                for _, obj in pairs(folder:GetChildren()) do
+                    if obj:IsA("Model") then
+                        for _, name in pairs(bossNames) do
+                            if string.find(string.lower(obj.Name), string.lower(name)) then
+                                local humanoid = obj:FindFirstChild("Humanoid")
+                                local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
+                                if humanoid and humanoid.Health > 0 and rootPart then
+                                    boss = {model = obj, humanoid = humanoid, rootPart = rootPart}
+                                    return boss
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Also search directly in workspace
+        for _, obj in pairs(Workspace:GetChildren()) do
+            if obj:IsA("Model") then
+                for _, name in pairs(bossNames) do
+                    if string.find(string.lower(obj.Name), string.lower(name)) then
+                        local humanoid = obj:FindFirstChild("Humanoid")
+                        local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
+                        if humanoid and humanoid.Health > 0 and rootPart then
+                            boss = {model = obj, humanoid = humanoid, rootPart = rootPart}
+                            return boss
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    return boss
+end
+
+local function findLever()
+    local lever = nil
+    pcall(function()
+        local leverNames = {"Lever", "lever", "LEVER", "Switch", "Pull", "Handle"}
+        
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
+                local parent = obj.Parent
+                if parent then
+                    for _, name in pairs(leverNames) do
+                        if string.find(string.lower(parent.Name), string.lower(name)) then
+                            lever = parent
+                            return lever
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Search for lever models
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") or obj:IsA("Part") then
+                for _, name in pairs(leverNames) do
+                    if string.find(string.lower(obj.Name), string.lower(name)) then
+                        lever = obj
+                        return lever
+                    end
+                end
+            end
+        end
+    end)
+    return lever
+end
+
+local function moveToTarget(targetPosition)
+    local char = LocalPlayer.Character
+    if not char then return false end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return false end
+    
+    local humanoid = char:FindFirstChild("Humanoid")
+    if not humanoid then return false end
+    
+    local distance = (root.Position - targetPosition).Magnitude
+    
+    if distance <= 15 then
+        -- Close enough, move directly
+        humanoid:MoveTo(targetPosition)
+        return true
+    else
+        -- Use pathfinding for longer distances
+        local path = PathfindingService:CreatePath()
+        path:ComputeAsync(root.Position, targetPosition)
+        
+        if path.Status == Enum.PathStatus.Success then
+            local waypoints = path:GetWaypoints()
+            for _, waypoint in pairs(waypoints) do
+                if not Settings.AutoRaid then return false end
+                humanoid:MoveTo(waypoint.Position)
+                humanoid.MoveToFinished:Wait()
+                task.wait()
+            end
+            return true
+        else
+            -- Fallback to direct movement
+            humanoid:MoveTo(targetPosition)
+            return true
+        end
+    end
+end
+
+local function attackTarget(targetRootPart)
+    local char = LocalPlayer.Character
+    if not char then return end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    
+    -- Face the target
+    root.CFrame = CFrame.lookAt(root.Position, Vector3.new(targetRootPart.Position.X, root.Position.Y, targetRootPart.Position.Z))
+    
+    -- Attack
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+    task.wait(0.05)
+    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+end
+
+local function pullLever(lever)
+    pcall(function()
+        local char = LocalPlayer.Character
+        if not char then return end
+        local root = char:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        
+        local leverPosition
+        if lever:IsA("Model") then
+            leverPosition = lever:GetPivot().Position
+        else
+            leverPosition = lever.Position
+        end
+        
+        -- Move to lever
+        moveToTarget(leverPosition)
+        task.wait(0.5)
+        
+        -- Pull the lever
+        local prompt = lever:FindFirstChild("ProximityPrompt")
+        if prompt then
+            fireproximityprompt(prompt)
+        end
+        
+        local clickDetector = lever:FindFirstChild("ClickDetector")
+        if clickDetector then
+            fireclickdetector(clickDetector)
+        end
+        
+        -- Try clicking the lever
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+        task.wait(0.1)
+        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        
+        LastPullTime = tick()
+    end)
+end
+
+-- =============================================
 -- GUI CREATION
 -- =============================================
 local GUI = Instance.new("ScreenGui")
 GUI.Name = "SailorPieceGUI"
 GUI.ResetOnSpawn = false
-GUI.Parent = game.CoreGui
+GUI.Parent = game.CoreGUI
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Adjust size for mobile
 local mainWidth = 500
-local mainHeight = 320
+local mainHeight = 340
 if isMobile then
     mainWidth = 380
-    mainHeight = 240
+    mainHeight = 260
 end
 
 -- Main Container
 local Main = Instance.new("Frame")
 Main.Name = "MainFrame"
 Main.Size = UDim2.new(0, mainWidth, 0, mainHeight)
-Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -160)
+Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -170)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -292,10 +475,10 @@ local TabButtons = {}
 local TabPages = {}
 
 local function CreateTab(name, icon, index)
-    local btnSize = isMobile and 28 or 32
-    local btnFont = isMobile and 10 or 11
+    local btnSize = isMobile and 26 or 30
+    local btnFont = isMobile and 9 or 10
     local startY = isMobile and 46 or 52
-    local spacing = isMobile and 32 or 36
+    local spacing = isMobile and 30 or 34
     
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, btnSize)
@@ -483,8 +666,9 @@ end
 -- CREATE TABS
 -- =============================================
 local FarmPage = CreateTab("Farm", "⚔️", 1)
-local PlayerPage = CreateTab("Player", "👤", 2)
-local SettingsPage = CreateTab("Settings", "⚙️", 3)
+local RaidPage = CreateTab("Raid", "🏛️", 2)
+local PlayerPage = CreateTab("Player", "👤", 3)
+local SettingsPage = CreateTab("Settings", "⚙️", 4)
 
 -- =============================================
 -- FARM TAB
@@ -540,6 +724,109 @@ NPCCount.TextXAlignment = Enum.TextXAlignment.Left
 NPCCount.Font = Enum.Font.Gotham
 NPCCount.TextSize = 9
 NPCCount.Parent = FarmPage
+
+-- =============================================
+-- RAID TAB
+-- =============================================
+CreateSection(RaidPage, "MINOTAUR RAID", 10)
+
+local RaidStatusDisplay = Instance.new("TextLabel")
+RaidStatusDisplay.Size = UDim2.new(1, -30, 0, 36)
+RaidStatusDisplay.Position = UDim2.new(0, 15, 0, 34)
+RaidStatusDisplay.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+RaidStatusDisplay.BorderSizePixel = 0
+RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
+RaidStatusDisplay.Text = "🏛️ Status: Idle"
+RaidStatusDisplay.TextXAlignment = Enum.TextXAlignment.Left
+RaidStatusDisplay.Font = Enum.Font.GothamBold
+RaidStatusDisplay.TextSize = isMobile and 10 or 11
+RaidStatusDisplay.Parent = RaidPage
+
+local RaidCorner = Instance.new("UICorner")
+RaidCorner.CornerRadius = UDim.new(0, 4)
+RaidCorner.Parent = RaidStatusDisplay
+
+CreateToggle(RaidPage, "Auto Raid", false, 82, function(state)
+    Settings.AutoRaid = state
+    if state then
+        RaidStatus = "Starting..."
+        RaidStatusDisplay.Text = "🏛️ Status: Starting..."
+        RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
+    else
+        RaidStatus = "Idle"
+        RaidStatusDisplay.Text = "🏛️ Status: Idle"
+        RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
+    end
+end)
+
+CreateToggle(RaidPage, "Auto Pull Lever", true, 120, function(state)
+    Settings.AutoPullLever = state
+end)
+
+CreateToggle(RaidPage, "Auto Attack Boss", true, 158, function(state)
+    Settings.AutoAttackBoss = state
+end)
+
+CreateSection(RaidPage, "BOSS INFO", 200)
+
+local BossHealth = Instance.new("TextLabel")
+BossHealth.Size = UDim2.new(1, -30, 0, 18)
+BossHealth.Position = UDim2.new(0, 15, 0, 224)
+BossHealth.BackgroundTransparency = 1
+BossHealth.TextColor3 = Color3.fromRGB(255, 100, 100)
+BossHealth.Text = "👹 Boss: Not found"
+BossHealth.TextXAlignment = Enum.TextXAlignment.Left
+BossHealth.Font = Enum.Font.Gotham
+BossHealth.TextSize = 10
+BossHealth.Parent = RaidPage
+
+local BossDistance = Instance.new("TextLabel")
+BossDistance.Size = UDim2.new(1, -30, 0, 18)
+BossDistance.Position = UDim2.new(0, 15, 0, 242)
+BossDistance.BackgroundTransparency = 1
+BossDistance.TextColor3 = Color3.fromRGB(200, 200, 200)
+BossDistance.Text = "📏 Distance: N/A"
+BossDistance.TextXAlignment = Enum.TextXAlignment.Left
+BossDistance.Font = Enum.Font.Gotham
+BossDistance.TextSize = 10
+BossDistance.Parent = RaidPage
+
+local LeverStatus = Instance.new("TextLabel")
+LeverStatus.Size = UDim2.new(1, -30, 0, 18)
+LeverStatus.Position = UDim2.new(0, 15, 0, 260)
+LeverStatus.BackgroundTransparency = 1
+LeverStatus.TextColor3 = Color3.fromRGB(200, 200, 200)
+LeverStatus.Text = "🔧 Lever: Searching..."
+LeverStatus.TextXAlignment = Enum.TextXAlignment.Left
+LeverStatus.Font = Enum.Font.Gotham
+LeverStatus.TextSize = 10
+LeverStatus.Parent = RaidPage
+
+CreateSection(RaidPage, "CONTROLS", 290)
+
+CreateButton(RaidPage, "🔄 Find & Pull Lever", 314, function()
+    local lever = findLever()
+    if lever then
+        RaidStatus = "Pulling lever..."
+        RaidStatusDisplay.Text = "🏛️ Status: Pulling lever..."
+        pullLever(lever)
+    else
+        RaidStatus = "Lever not found"
+        RaidStatusDisplay.Text = "🏛️ Status: Lever not found"
+    end
+end)
+
+CreateButton(RaidPage, "⚔️ Attack Boss", 352, function()
+    local boss = findMinotaurBoss()
+    if boss then
+        RaidStatus = "Attacking boss..."
+        RaidStatusDisplay.Text = "🏛️ Status: Attacking boss..."
+        BossTarget = boss
+    else
+        RaidStatus = "Boss not found"
+        RaidStatusDisplay.Text = "🏛️ Status: Boss not found"
+    end
+end)
 
 -- =============================================
 -- PLAYER TAB
@@ -637,6 +924,7 @@ CreateSection(SettingsPage, "TERMINATE", 126)
 CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 150, function()
     ScriptActive = false
     Settings.Farming = false
+    Settings.AutoRaid = false
     GUI:Destroy()
 end)
 
@@ -837,6 +1125,48 @@ task.spawn(function()
     end
 end)
 
+-- Raid Status Update
+task.spawn(function()
+    while ScriptActive do
+        if Settings.AutoRaid then
+            pcall(function()
+                -- Update boss info
+                local boss = findMinotaurBoss()
+                if boss then
+                    local char = LocalPlayer.Character
+                    if char and char:FindFirstChild("HumanoidRootPart") then
+                        local dist = math.floor((char.HumanoidRootPart.Position - boss.rootPart.Position).Magnitude)
+                        local hp = math.floor((boss.humanoid.Health / boss.humanoid.MaxHealth) * 100)
+                        BossHealth.Text = "👹 Boss: Minotaur | HP: " .. hp .. "%"
+                        BossDistance.Text = "📏 Distance: " .. dist .. "m"
+                        
+                        if hp <= 0 then
+                            BossHealth.Text = "👹 Boss: Defeated! ✅"
+                            BossHealth.TextColor3 = Color3.fromRGB(100, 255, 100)
+                        else
+                            BossHealth.TextColor3 = Color3.fromRGB(255, 100, 100)
+                        end
+                    end
+                else
+                    BossHealth.Text = "👹 Boss: Not found"
+                    BossDistance.Text = "📏 Distance: N/A"
+                end
+                
+                -- Update lever info
+                local lever = findLever()
+                if lever then
+                    LeverStatus.Text = "🔧 Lever: Found ✅"
+                    LeverStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+                else
+                    LeverStatus.Text = "🔧 Lever: Not found"
+                    LeverStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+                end
+            end)
+        end
+        task.wait(1)
+    end
+end)
+
 -- Apply Permanent Stats
 task.spawn(function()
     while ScriptActive do
@@ -894,4 +1224,62 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | Text Minimize | PC + Mobile | Auto Bounty")
+-- Auto Raid System
+task.spawn(function()
+    while ScriptActive do
+        if Settings.AutoRaid then
+            pcall(function()
+                local char = LocalPlayer.Character
+                if not char then return end
+                local root = char:FindFirstChild("HumanoidRootPart")
+                if not root then return end
+                
+                -- Step 1: Find and pull lever if enabled
+                if Settings.AutoPullLever and tick() - LastPullTime > 5 then
+                    local lever = findLever()
+                    if lever then
+                        RaidStatus = "Pulling lever..."
+                        RaidStatusDisplay.Text = "🏛️ Status: Pulling lever..."
+                        pullLever(lever)
+                        RaidStatus = "Lever pulled"
+                        RaidStatusDisplay.Text = "🏛️ Status: Lever pulled ✅"
+                        task.wait(2)
+                    end
+                end
+                
+                -- Step 2: Find and attack boss if enabled
+                if Settings.AutoAttackBoss then
+                    local boss = findMinotaurBoss()
+                    if boss and boss.humanoid.Health > 0 then
+                        RaidStatus = "Moving to boss..."
+                        RaidStatusDisplay.Text = "🏛️ Status: Moving to boss..."
+                        
+                        -- Move to boss
+                        moveToTarget(boss.rootPart.Position)
+                        
+                        -- Attack boss
+                        if (root.Position - boss.rootPart.Position).Magnitude <= 15 then
+                            RaidStatus = "Attacking boss!"
+                            RaidStatusDisplay.Text = "🏛️ Status: Attacking boss! ⚔️"
+                            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
+                            
+                            for i = 1, 10 do
+                                if not Settings.AutoRaid then break end
+                                if boss.humanoid.Health <= 0 then break end
+                                attackTarget(boss.rootPart)
+                                task.wait(0.3)
+                            end
+                        end
+                    else
+                        RaidStatus = "Waiting for boss..."
+                        RaidStatusDisplay.Text = "🏛️ Status: Waiting for boss..."
+                        RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
+                    end
+                end
+            end)
+        end
+        task.wait(2)
+    end
+end)
+
+print("✅ Sailor Piece GUI Loaded! | Raid System | Text Minimize | PC + Mobile | Auto Bounty")
