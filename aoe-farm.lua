@@ -51,8 +51,6 @@ local CurrentBounty = "Searching..."
 
 -- Raid Variables
 local RaidStatus = "Idle"
-local BossTarget = nil
-local LeverTarget = nil
 local LastPullTime = 0
 
 -- Clean up
@@ -125,45 +123,35 @@ end
 local function findMinotaurBoss()
     local boss = nil
     pcall(function()
-        -- Search in various possible locations
-        local folders = {"Bosses", "Enemies", "NPCs", "Mobs", "Raids"}
         local bossNames = {"Minotaur", "minotaur", "MINOTAUR", "MinotaurBoss", "Minotaur Boss"}
         
-        for _, folderName in pairs(folders) do
-            local folder = Workspace:FindFirstChild(folderName)
-            if folder then
-                for _, obj in pairs(folder:GetChildren()) do
-                    if obj:IsA("Model") then
-                        for _, name in pairs(bossNames) do
-                            if string.find(string.lower(obj.Name), string.lower(name)) then
-                                local humanoid = obj:FindFirstChild("Humanoid")
-                                local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
-                                if humanoid and humanoid.Health > 0 and rootPart then
-                                    boss = {model = obj, humanoid = humanoid, rootPart = rootPart}
-                                    return boss
-                                end
+        local function searchIn(parent)
+            for _, obj in pairs(parent:GetChildren()) do
+                if obj:IsA("Model") then
+                    for _, name in pairs(bossNames) do
+                        if string.find(string.lower(obj.Name), string.lower(name)) then
+                            local humanoid = obj:FindFirstChild("Humanoid")
+                            local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
+                            if humanoid and humanoid.Health > 0 and rootPart then
+                                boss = {model = obj, humanoid = humanoid, rootPart = rootPart}
+                                return true
                             end
                         end
                     end
                 end
             end
+            return false
         end
         
-        -- Also search directly in workspace
-        for _, obj in pairs(Workspace:GetChildren()) do
-            if obj:IsA("Model") then
-                for _, name in pairs(bossNames) do
-                    if string.find(string.lower(obj.Name), string.lower(name)) then
-                        local humanoid = obj:FindFirstChild("Humanoid")
-                        local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
-                        if humanoid and humanoid.Health > 0 and rootPart then
-                            boss = {model = obj, humanoid = humanoid, rootPart = rootPart}
-                            return boss
-                        end
-                    end
-                end
-            end
+        -- Search in folders
+        local folders = {"Bosses", "Enemies", "NPCs", "Mobs", "Raids", "Boss"}
+        for _, folderName in pairs(folders) do
+            local folder = Workspace:FindFirstChild(folderName)
+            if folder and searchIn(folder) then return boss end
         end
+        
+        -- Search directly in workspace
+        searchIn(Workspace)
     end)
     return boss
 end
@@ -171,7 +159,7 @@ end
 local function findLever()
     local lever = nil
     pcall(function()
-        local leverNames = {"Lever", "lever", "LEVER", "Switch", "Pull", "Handle"}
+        local leverNames = {"Lever", "lever", "LEVER", "Switch", "switch", "Pull", "Handle"}
         
         for _, obj in pairs(Workspace:GetDescendants()) do
             if obj:IsA("ProximityPrompt") or obj:IsA("ClickDetector") then
@@ -189,7 +177,7 @@ local function findLever()
         
         -- Search for lever models
         for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") or obj:IsA("Part") then
+            if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("BasePart") then
                 for _, name in pairs(leverNames) do
                     if string.find(string.lower(obj.Name), string.lower(name)) then
                         lever = obj
@@ -213,29 +201,37 @@ local function moveToTarget(targetPosition)
     
     local distance = (root.Position - targetPosition).Magnitude
     
-    if distance <= 15 then
-        -- Close enough, move directly
-        humanoid:MoveTo(targetPosition)
+    if distance <= 4 then
+        return true
+    end
+    
+    -- Use pathfinding
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        Costs = {}
+    })
+    
+    local success, errorMessage = pcall(function()
+        path:ComputeAsync(root.Position, targetPosition)
+    end)
+    
+    if success and path.Status == Enum.PathStatus.Success then
+        local waypoints = path:GetWaypoints()
+        for _, waypoint in pairs(waypoints) do
+            if not Settings.AutoRaid then return false end
+            if waypoint.Action == Enum.PathWaypointAction.Jump then
+                humanoid.Jump = true
+            end
+            humanoid:MoveTo(waypoint.Position)
+            humanoid.MoveToFinished:Wait()
+        end
         return true
     else
-        -- Use pathfinding for longer distances
-        local path = PathfindingService:CreatePath()
-        path:ComputeAsync(root.Position, targetPosition)
-        
-        if path.Status == Enum.PathStatus.Success then
-            local waypoints = path:GetWaypoints()
-            for _, waypoint in pairs(waypoints) do
-                if not Settings.AutoRaid then return false end
-                humanoid:MoveTo(waypoint.Position)
-                humanoid.MoveToFinished:Wait()
-                task.wait()
-            end
-            return true
-        else
-            -- Fallback to direct movement
-            humanoid:MoveTo(targetPosition)
-            return true
-        end
+        -- Fallback to direct movement
+        humanoid:MoveTo(targetPosition)
+        return true
     end
 end
 
@@ -283,10 +279,13 @@ local function pullLever(lever)
             fireclickdetector(clickDetector)
         end
         
-        -- Try clicking the lever
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-        task.wait(0.1)
-        VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
+        -- Try clicking near the lever
+        if lever:IsA("BasePart") then
+            local clickPos = lever.Position
+            VirtualInputManager:SendMouseButtonEvent(clickPos.X, clickPos.Y, 0, true, game, 0)
+            task.wait(0.1)
+            VirtualInputManager:SendMouseButtonEvent(clickPos.X, clickPos.Y, 0, false, game, 0)
+        end
         
         LastPullTime = tick()
     end)
@@ -298,22 +297,22 @@ end
 local GUI = Instance.new("ScreenGui")
 GUI.Name = "SailorPieceGUI"
 GUI.ResetOnSpawn = false
-GUI.Parent = game.CoreGUI
+GUI.Parent = game.CoreGui
 GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Adjust size for mobile
 local mainWidth = 500
-local mainHeight = 340
+local mainHeight = 370
 if isMobile then
     mainWidth = 380
-    mainHeight = 260
+    mainHeight = 280
 end
 
 -- Main Container
 local Main = Instance.new("Frame")
 Main.Name = "MainFrame"
 Main.Size = UDim2.new(0, mainWidth, 0, mainHeight)
-Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -170)
+Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -185)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -323,7 +322,7 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = Main
 
--- Minimize Text Button (Script by Maryyy v1)
+-- Minimize Text Button
 local MinimizeText = Instance.new("TextButton")
 MinimizeText.Name = "MinimizeText"
 MinimizeText.Size = UDim2.new(0, isMobile and 200 or 180, 0, isMobile and 50 or 40)
@@ -473,12 +472,13 @@ LogoSub.Parent = SidebarLogo
 -- Tab System
 local TabButtons = {}
 local TabPages = {}
+local currentTab = 1
 
 local function CreateTab(name, icon, index)
-    local btnSize = isMobile and 26 or 30
-    local btnFont = isMobile and 9 or 10
+    local btnSize = isMobile and 24 or 28
+    local btnFont = isMobile and 8 or 9
     local startY = isMobile and 46 or 52
-    local spacing = isMobile and 30 or 34
+    local spacing = isMobile and 28 or 32
     
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, btnSize)
@@ -486,7 +486,7 @@ local function CreateTab(name, icon, index)
     btn.BackgroundColor3 = index == 1 and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(23, 23, 23)
     btn.BorderSizePixel = 0
     btn.TextColor3 = index == 1 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
-    btn.Text = "  " .. icon .. "  " .. name
+    btn.Text = icon .. " " .. name
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = btnFont
@@ -506,7 +506,7 @@ local function CreateTab(name, icon, index)
     page.Visible = (index == 1)
     page.Parent = ContentContainer
     
-    btn.Activated:Connect(function()
+    btn.MouseButton1Click:Connect(function()
         for i = 1, #TabButtons do
             TabButtons[i].BackgroundColor3 = Color3.fromRGB(23, 23, 23)
             TabButtons[i].TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -515,6 +515,7 @@ local function CreateTab(name, icon, index)
         btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         page.Visible = true
+        currentTab = index
     end)
     
     table.insert(TabButtons, btn)
@@ -567,14 +568,14 @@ local function CreateToggle(parent, title, default, yPos, callback)
     bgCorner.Parent = bg
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.6, -10, 1, 0)
+    label.Size = UDim2.new(0.55, -10, 1, 0)
     label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
     label.TextColor3 = Color3.fromRGB(200, 200, 200)
     label.Text = title
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Font = Enum.Font.Gotham
-    label.TextSize = isMobile and 10 or 11
+    label.TextSize = isMobile and 9 or 10
     label.Parent = bg
     
     local state = default
@@ -618,7 +619,7 @@ local function CreateToggle(parent, title, default, yPos, callback)
         callback(state)
     end
     
-    switch.Activated:Connect(toggleSwitch)
+    switch.MouseButton1Click:Connect(toggleSwitch)
     
     return bg
 end
@@ -643,7 +644,7 @@ local function CreateButton(parent, title, yPos, callback)
     btnCorner.CornerRadius = UDim.new(0, 4)
     btnCorner.Parent = btn
     
-    btn.Activated:Connect(callback)
+    btn.MouseButton1Click:Connect(callback)
     
     return btn
 end
@@ -677,7 +678,7 @@ CreateSection(FarmPage, "CONTROLS", 10)
 
 local FarmStatus = Instance.new("TextLabel")
 FarmStatus.Size = UDim2.new(1, -30, 0, 16)
-FarmStatus.Position = UDim2.new(0, 15, 0, isMobile and 36 or 34)
+FarmStatus.Position = UDim2.new(0, 15, 0, 34)
 FarmStatus.BackgroundTransparency = 1
 FarmStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
 FarmStatus.Text = "● Idle"
@@ -686,21 +687,21 @@ FarmStatus.Font = Enum.Font.Gotham
 FarmStatus.TextSize = 10
 FarmStatus.Parent = FarmPage
 
-CreateToggle(FarmPage, "AOE Farming", false, isMobile and 58 or 54, function(state)
+CreateToggle(FarmPage, "AOE Farming", false, 54, function(state)
     Settings.Farming = state
     FarmStatus.Text = state and "● Farming" or "● Idle"
     FarmStatus.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
 end)
 
-CreateToggle(FarmPage, "Anti-AFK", true, isMobile and 96 or 88, function(state)
+CreateToggle(FarmPage, "Anti-AFK", true, 88, function(state)
     Settings.AntiAFK = state
 end)
 
-CreateSection(FarmPage, "INFO", isMobile and 138 or 130)
+CreateSection(FarmPage, "INFO", 130)
 
 local BountyDisplay = Instance.new("TextLabel")
-BountyDisplay.Size = UDim2.new(1, -30, 0, isMobile and 24 or 22)
-BountyDisplay.Position = UDim2.new(0, 15, 0, isMobile and 162 or 154)
+BountyDisplay.Size = UDim2.new(1, -30, 0, 24)
+BountyDisplay.Position = UDim2.new(0, 15, 0, 154)
 BountyDisplay.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 BountyDisplay.BorderSizePixel = 0
 BountyDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
@@ -716,7 +717,7 @@ BountyCorner.Parent = BountyDisplay
 
 local NPCCount = Instance.new("TextLabel")
 NPCCount.Size = UDim2.new(1, -30, 0, 14)
-NPCCount.Position = UDim2.new(0, 15, 0, isMobile and 196 or 186)
+NPCCount.Position = UDim2.new(0, 15, 0, 186)
 NPCCount.BackgroundTransparency = 1
 NPCCount.TextColor3 = Color3.fromRGB(140, 140, 140)
 NPCCount.Text = "NPCs in range: 0"
@@ -809,22 +810,14 @@ CreateButton(RaidPage, "🔄 Find & Pull Lever", 314, function()
     if lever then
         RaidStatus = "Pulling lever..."
         RaidStatusDisplay.Text = "🏛️ Status: Pulling lever..."
-        pullLever(lever)
+        task.spawn(function()
+            pullLever(lever)
+            RaidStatus = "Lever pulled"
+            RaidStatusDisplay.Text = "🏛️ Status: Lever pulled ✅"
+        end)
     else
         RaidStatus = "Lever not found"
         RaidStatusDisplay.Text = "🏛️ Status: Lever not found"
-    end
-end)
-
-CreateButton(RaidPage, "⚔️ Attack Boss", 352, function()
-    local boss = findMinotaurBoss()
-    if boss then
-        RaidStatus = "Attacking boss..."
-        RaidStatusDisplay.Text = "🏛️ Status: Attacking boss..."
-        BossTarget = boss
-    else
-        RaidStatus = "Boss not found"
-        RaidStatusDisplay.Text = "🏛️ Status: Boss not found"
     end
 end)
 
@@ -943,8 +936,8 @@ local function showText()
     Settings.Minimized = true
 end
 
-MinBtn.Activated:Connect(showText)
-MinimizeText.Activated:Connect(showMain)
+MinBtn.MouseButton1Click:Connect(showText)
+MinimizeText.MouseButton1Click:Connect(showMain)
 
 -- Text button: tap to restore, drag to move
 local textDragging = false
@@ -1130,7 +1123,6 @@ task.spawn(function()
     while ScriptActive do
         if Settings.AutoRaid then
             pcall(function()
-                -- Update boss info
                 local boss = findMinotaurBoss()
                 if boss then
                     local char = LocalPlayer.Character
@@ -1152,7 +1144,6 @@ task.spawn(function()
                     BossDistance.Text = "📏 Distance: N/A"
                 end
                 
-                -- Update lever info
                 local lever = findLever()
                 if lever then
                     LeverStatus.Text = "🔧 Lever: Found ✅"
@@ -1254,10 +1245,8 @@ task.spawn(function()
                         RaidStatus = "Moving to boss..."
                         RaidStatusDisplay.Text = "🏛️ Status: Moving to boss..."
                         
-                        -- Move to boss
                         moveToTarget(boss.rootPart.Position)
                         
-                        -- Attack boss
                         if (root.Position - boss.rootPart.Position).Magnitude <= 15 then
                             RaidStatus = "Attacking boss!"
                             RaidStatusDisplay.Text = "🏛️ Status: Attacking boss! ⚔️"
