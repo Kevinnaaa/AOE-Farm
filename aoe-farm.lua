@@ -2,7 +2,7 @@
     Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO TEXT)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
     Permanent Stats | FPS/Ping/Time on Title Bar | Auto Bounty Display
-    PC + Mobile Support | FIXED TOGGLES | RAID SYSTEM
+    PC + Mobile Support | FIXED TOGGLES
 --]]
 
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
@@ -15,7 +15,6 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local PathfindingService = game:GetService("PathfindingService")
 
 -- Detect platform
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -32,9 +31,7 @@ local PERMANENT = {
 local Settings = {
     Farming = false,
     AntiAFK = true,
-    Minimized = false,
-    AutoPullLever = false,
-    AutoAttackBoss = false
+    Minimized = false
 }
 
 local ScriptActive = true
@@ -47,11 +44,6 @@ local saniye, dakika, saat = 0, 0, 0
 
 -- Bounty
 local CurrentBounty = "Searching..."
-
--- Raid Variables
-local RaidStatus = "Idle"
-local LastPullTime = 0
-local isPullingLever = false
 
 -- Clean up
 if getgenv().SailorPieceLoaded then
@@ -118,182 +110,6 @@ local function scanBounty()
 end
 
 -- =============================================
--- RAID FUNCTIONS
--- =============================================
-local function findMinotaurBoss()
-    local boss = nil
-    pcall(function()
-        local function searchIn(parent)
-            for _, obj in pairs(parent:GetChildren()) do
-                if obj:IsA("Model") and string.lower(obj.Name) == "minotaur" then
-                    local humanoid = obj:FindFirstChild("Humanoid")
-                    local rootPart = obj:FindFirstChild("HumanoidRootPart") or obj:FindFirstChild("Head") or obj:FindFirstChild("Torso")
-                    if humanoid and humanoid.Health > 0 and rootPart then
-                        boss = {model = obj, humanoid = humanoid, rootPart = rootPart}
-                        return true
-                    end
-                end
-            end
-            return false
-        end
-        
-        -- Search in folders
-        local folders = {"Bosses", "Enemies", "NPCs", "Mobs", "Raids", "Boss"}
-        for _, folderName in pairs(folders) do
-            local folder = Workspace:FindFirstChild(folderName)
-            if folder and searchIn(folder) then return boss end
-        end
-        
-        -- Search directly in workspace
-        searchIn(Workspace)
-    end)
-    return boss
-end
-
-local function findLever()
-    local lever = nil
-    pcall(function()
-        local leverNames = {"Lever", "lever", "LEVER", "Switch", "switch", "Pull", "Handle"}
-        
-        -- First check for ProximityPrompts (most common for levers)
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ProximityPrompt") then
-                local parent = obj.Parent
-                if parent then
-                    for _, name in pairs(leverNames) do
-                        if string.find(string.lower(parent.Name), string.lower(name)) then
-                            lever = {object = parent, prompt = obj}
-                            return lever
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- Search for ClickDetectors
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("ClickDetector") then
-                local parent = obj.Parent
-                if parent then
-                    for _, name in pairs(leverNames) do
-                        if string.find(string.lower(parent.Name), string.lower(name)) then
-                            lever = {object = parent, clickDetector = obj}
-                            return lever
-                        end
-                    end
-                end
-            end
-        end
-        
-        -- Search for lever models/parts
-        for _, obj in pairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("BasePart") then
-                for _, name in pairs(leverNames) do
-                    if string.find(string.lower(obj.Name), string.lower(name)) then
-                        local prompt = obj:FindFirstChild("ProximityPrompt")
-                        if prompt then
-                            lever = {object = obj, prompt = prompt}
-                        else
-                            lever = {object = obj}
-                        end
-                        return lever
-                    end
-                end
-            end
-        end
-    end)
-    return lever
-end
-
-local function moveToTarget(targetPosition)
-    local char = LocalPlayer.Character
-    if not char then return false end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return false end
-    
-    local humanoid = char:FindFirstChild("Humanoid")
-    if not humanoid then return false end
-    
-    local distance = (root.Position - targetPosition).Magnitude
-    
-    if distance <= 4 then
-        return true
-    end
-    
-    humanoid:MoveTo(targetPosition)
-    return true
-end
-
-local function attackTarget(targetRootPart)
-    local char = LocalPlayer.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-    
-    -- Face the target
-    root.CFrame = CFrame.lookAt(root.Position, Vector3.new(targetRootPart.Position.X, root.Position.Y, targetRootPart.Position.Z))
-    
-    -- Attack
-    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
-    task.wait(0.05)
-    VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-end
-
-local function longPressE(duration)
-    -- Press E key
-    VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.E, false, game)
-    task.wait(duration)
-    -- Release E key
-    VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
-end
-
-local function pullLever(lever)
-    pcall(function()
-        local char = LocalPlayer.Character
-        if not char then return end
-        local root = char:FindFirstChild("HumanoidRootPart")
-        if not root then return end
-        
-        local leverPosition
-        if lever.object:IsA("Model") then
-            leverPosition = lever.object:GetPivot().Position
-        else
-            leverPosition = lever.object.Position
-        end
-        
-        -- Move to lever
-        moveToTarget(leverPosition)
-        task.wait(0.5)
-        
-        -- Fire proximity prompt first
-        if lever.prompt then
-            fireproximityprompt(lever.prompt)
-        end
-        
-        -- Fire click detector if exists
-        if lever.clickDetector then
-            fireclickdetector(lever.clickDetector)
-        end
-        
-        -- Long press E for lever interaction
-        RaidStatus = "Pressing E..."
-        RaidStatusDisplay.Text = "🏛️ Status: Holding E..."
-        longPressE(1.5)
-        
-        -- Also try clicking
-        if lever.object:IsA("BasePart") then
-            local clickPos = lever.object.Position
-            VirtualInputManager:SendMouseButtonEvent(clickPos.X, clickPos.Y, 0, true, game, 0)
-            task.wait(0.1)
-            VirtualInputManager:SendMouseButtonEvent(clickPos.X, clickPos.Y, 0, false, game, 0)
-        end
-        
-        LastPullTime = tick()
-        isPullingLever = false
-    end)
-end
-
--- =============================================
 -- GUI CREATION
 -- =============================================
 local GUI = Instance.new("ScreenGui")
@@ -304,17 +120,17 @@ GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Adjust size for mobile
 local mainWidth = 500
-local mainHeight = 350
+local mainHeight = 320
 if isMobile then
     mainWidth = 380
-    mainHeight = 270
+    mainHeight = 240
 end
 
 -- Main Container
 local Main = Instance.new("Frame")
 Main.Name = "MainFrame"
 Main.Size = UDim2.new(0, mainWidth, 0, mainHeight)
-Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -175)
+Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -160)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -324,7 +140,7 @@ local UICorner = Instance.new("UICorner")
 UICorner.CornerRadius = UDim.new(0, 6)
 UICorner.Parent = Main
 
--- Minimize Text Button
+-- Minimize Text Button (Script by Maryyy v1)
 local MinimizeText = Instance.new("TextButton")
 MinimizeText.Name = "MinimizeText"
 MinimizeText.Size = UDim2.new(0, isMobile and 200 or 180, 0, isMobile and 50 or 40)
@@ -474,13 +290,12 @@ LogoSub.Parent = SidebarLogo
 -- Tab System
 local TabButtons = {}
 local TabPages = {}
-local currentTab = 1
 
 local function CreateTab(name, icon, index)
-    local btnSize = isMobile and 24 or 28
-    local btnFont = isMobile and 8 or 9
+    local btnSize = isMobile and 28 or 32
+    local btnFont = isMobile and 10 or 11
     local startY = isMobile and 46 or 52
-    local spacing = isMobile and 28 or 32
+    local spacing = isMobile and 32 or 36
     
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, btnSize)
@@ -488,7 +303,7 @@ local function CreateTab(name, icon, index)
     btn.BackgroundColor3 = index == 1 and Color3.fromRGB(40, 40, 40) or Color3.fromRGB(23, 23, 23)
     btn.BorderSizePixel = 0
     btn.TextColor3 = index == 1 and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(150, 150, 150)
-    btn.Text = icon .. " " .. name
+    btn.Text = "  " .. icon .. "  " .. name
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.Font = Enum.Font.GothamBold
     btn.TextSize = btnFont
@@ -508,7 +323,7 @@ local function CreateTab(name, icon, index)
     page.Visible = (index == 1)
     page.Parent = ContentContainer
     
-    btn.MouseButton1Click:Connect(function()
+    btn.Activated:Connect(function()
         for i = 1, #TabButtons do
             TabButtons[i].BackgroundColor3 = Color3.fromRGB(23, 23, 23)
             TabButtons[i].TextColor3 = Color3.fromRGB(150, 150, 150)
@@ -517,7 +332,6 @@ local function CreateTab(name, icon, index)
         btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         page.Visible = true
-        currentTab = index
     end)
     
     table.insert(TabButtons, btn)
@@ -570,14 +384,14 @@ local function CreateToggle(parent, title, default, yPos, callback)
     bgCorner.Parent = bg
     
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.55, -10, 1, 0)
+    label.Size = UDim2.new(0.6, -10, 1, 0)
     label.Position = UDim2.new(0, 10, 0, 0)
     label.BackgroundTransparency = 1
     label.TextColor3 = Color3.fromRGB(200, 200, 200)
     label.Text = title
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Font = Enum.Font.Gotham
-    label.TextSize = isMobile and 9 or 10
+    label.TextSize = isMobile and 10 or 11
     label.Parent = bg
     
     local state = default
@@ -621,7 +435,7 @@ local function CreateToggle(parent, title, default, yPos, callback)
         callback(state)
     end
     
-    switch.MouseButton1Click:Connect(toggleSwitch)
+    switch.Activated:Connect(toggleSwitch)
     
     return bg
 end
@@ -646,7 +460,7 @@ local function CreateButton(parent, title, yPos, callback)
     btnCorner.CornerRadius = UDim.new(0, 4)
     btnCorner.Parent = btn
     
-    btn.MouseButton1Click:Connect(callback)
+    btn.Activated:Connect(callback)
     
     return btn
 end
@@ -669,9 +483,8 @@ end
 -- CREATE TABS
 -- =============================================
 local FarmPage = CreateTab("Farm", "⚔️", 1)
-local RaidPage = CreateTab("Raid", "🏛️", 2)
-local PlayerPage = CreateTab("Player", "👤", 3)
-local SettingsPage = CreateTab("Settings", "⚙️", 4)
+local PlayerPage = CreateTab("Player", "👤", 2)
+local SettingsPage = CreateTab("Settings", "⚙️", 3)
 
 -- =============================================
 -- FARM TAB
@@ -680,7 +493,7 @@ CreateSection(FarmPage, "CONTROLS", 10)
 
 local FarmStatus = Instance.new("TextLabel")
 FarmStatus.Size = UDim2.new(1, -30, 0, 16)
-FarmStatus.Position = UDim2.new(0, 15, 0, 34)
+FarmStatus.Position = UDim2.new(0, 15, 0, isMobile and 36 or 34)
 FarmStatus.BackgroundTransparency = 1
 FarmStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
 FarmStatus.Text = "● Idle"
@@ -689,21 +502,21 @@ FarmStatus.Font = Enum.Font.Gotham
 FarmStatus.TextSize = 10
 FarmStatus.Parent = FarmPage
 
-CreateToggle(FarmPage, "AOE Farming", false, 54, function(state)
+CreateToggle(FarmPage, "AOE Farming", false, isMobile and 58 or 54, function(state)
     Settings.Farming = state
     FarmStatus.Text = state and "● Farming" or "● Idle"
     FarmStatus.TextColor3 = state and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(150, 150, 150)
 end)
 
-CreateToggle(FarmPage, "Anti-AFK", true, 88, function(state)
+CreateToggle(FarmPage, "Anti-AFK", true, isMobile and 96 or 88, function(state)
     Settings.AntiAFK = state
 end)
 
-CreateSection(FarmPage, "INFO", 130)
+CreateSection(FarmPage, "INFO", isMobile and 138 or 130)
 
 local BountyDisplay = Instance.new("TextLabel")
-BountyDisplay.Size = UDim2.new(1, -30, 0, 24)
-BountyDisplay.Position = UDim2.new(0, 15, 0, 154)
+BountyDisplay.Size = UDim2.new(1, -30, 0, isMobile and 24 or 22)
+BountyDisplay.Position = UDim2.new(0, 15, 0, isMobile and 162 or 154)
 BountyDisplay.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 BountyDisplay.BorderSizePixel = 0
 BountyDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
@@ -719,7 +532,7 @@ BountyCorner.Parent = BountyDisplay
 
 local NPCCount = Instance.new("TextLabel")
 NPCCount.Size = UDim2.new(1, -30, 0, 14)
-NPCCount.Position = UDim2.new(0, 15, 0, 186)
+NPCCount.Position = UDim2.new(0, 15, 0, isMobile and 196 or 186)
 NPCCount.BackgroundTransparency = 1
 NPCCount.TextColor3 = Color3.fromRGB(140, 140, 140)
 NPCCount.Text = "NPCs in range: 0"
@@ -727,156 +540,6 @@ NPCCount.TextXAlignment = Enum.TextXAlignment.Left
 NPCCount.Font = Enum.Font.Gotham
 NPCCount.TextSize = 9
 NPCCount.Parent = FarmPage
-
--- =============================================
--- RAID TAB
--- =============================================
-CreateSection(RaidPage, "MINOTAUR RAID", 10)
-
-local RaidStatusDisplay = Instance.new("TextLabel")
-RaidStatusDisplay.Size = UDim2.new(1, -30, 0, 36)
-RaidStatusDisplay.Position = UDim2.new(0, 15, 0, 34)
-RaidStatusDisplay.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-RaidStatusDisplay.BorderSizePixel = 0
-RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-RaidStatusDisplay.Text = "🏛️ Status: Idle"
-RaidStatusDisplay.TextXAlignment = Enum.TextXAlignment.Left
-RaidStatusDisplay.Font = Enum.Font.GothamBold
-RaidStatusDisplay.TextSize = isMobile and 10 or 11
-RaidStatusDisplay.Parent = RaidPage
-
-local RaidCorner = Instance.new("UICorner")
-RaidCorner.CornerRadius = UDim.new(0, 4)
-RaidCorner.Parent = RaidStatusDisplay
-
-CreateSection(RaidPage, "BOSS INFO", 82)
-
-local BossHealth = Instance.new("TextLabel")
-BossHealth.Size = UDim2.new(1, -30, 0, 18)
-BossHealth.Position = UDim2.new(0, 15, 0, 106)
-BossHealth.BackgroundTransparency = 1
-BossHealth.TextColor3 = Color3.fromRGB(255, 100, 100)
-BossHealth.Text = "👹 Boss: Not found"
-BossHealth.TextXAlignment = Enum.TextXAlignment.Left
-BossHealth.Font = Enum.Font.Gotham
-BossHealth.TextSize = 10
-BossHealth.Parent = RaidPage
-
-local BossDistance = Instance.new("TextLabel")
-BossDistance.Size = UDim2.new(1, -30, 0, 18)
-BossDistance.Position = UDim2.new(0, 15, 0, 124)
-BossDistance.BackgroundTransparency = 1
-BossDistance.TextColor3 = Color3.fromRGB(200, 200, 200)
-BossDistance.Text = "📏 Distance: N/A"
-BossDistance.TextXAlignment = Enum.TextXAlignment.Left
-BossDistance.Font = Enum.Font.Gotham
-BossDistance.TextSize = 10
-BossDistance.Parent = RaidPage
-
-local LeverStatus = Instance.new("TextLabel")
-LeverStatus.Size = UDim2.new(1, -30, 0, 18)
-LeverStatus.Position = UDim2.new(0, 15, 0, 142)
-LeverStatus.BackgroundTransparency = 1
-LeverStatus.TextColor3 = Color3.fromRGB(200, 200, 200)
-LeverStatus.Text = "🔧 Lever: Searching..."
-LeverStatus.TextXAlignment = Enum.TextXAlignment.Left
-LeverStatus.Font = Enum.Font.Gotham
-LeverStatus.TextSize = 10
-LeverStatus.Parent = RaidPage
-
-CreateSection(RaidPage, "MANUAL CONTROLS", 172)
-
-CreateButton(RaidPage, "🔄 Find & Pull Lever (Hold E)", 196, function()
-    if isPullingLever then return end
-    isPullingLever = true
-    task.spawn(function()
-        local lever = findLever()
-        if lever then
-            RaidStatus = "Pulling lever..."
-            RaidStatusDisplay.Text = "🏛️ Status: Pulling lever..."
-            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-            pullLever(lever)
-            RaidStatus = "Lever pulled!"
-            RaidStatusDisplay.Text = "🏛️ Status: Lever pulled! ✅"
-            RaidStatusDisplay.TextColor3 = Color3.fromRGB(100, 255, 100)
-        else
-            RaidStatus = "Lever not found!"
-            RaidStatusDisplay.Text = "🏛️ Status: Lever not found! ❌"
-            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
-        end
-        isPullingLever = false
-    end)
-end)
-
-CreateButton(RaidPage, "⚔️ Walk & Attack Minotaur", 236, function()
-    task.spawn(function()
-        local boss = findMinotaurBoss()
-        if boss then
-            RaidStatus = "Moving to Minotaur..."
-            RaidStatusDisplay.Text = "🏛️ Status: Moving to Minotaur..."
-            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-            
-            moveToTarget(boss.rootPart.Position)
-            
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local dist = (char.HumanoidRootPart.Position - boss.rootPart.Position).Magnitude
-                if dist <= 15 then
-                    RaidStatus = "Attacking Minotaur!"
-                    RaidStatusDisplay.Text = "🏛️ Status: Attacking Minotaur! ⚔️"
-                    RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
-                    
-                    for i = 1, 10 do
-                        if boss.humanoid.Health <= 0 then break end
-                        attackTarget(boss.rootPart)
-                        task.wait(0.3)
-                    end
-                    
-                    if boss.humanoid.Health <= 0 then
-                        RaidStatus = "Minotaur defeated!"
-                        RaidStatusDisplay.Text = "🏛️ Status: Minotaur defeated! 🎉"
-                        RaidStatusDisplay.TextColor3 = Color3.fromRGB(100, 255, 100)
-                    end
-                end
-            end
-        else
-            RaidStatus = "Minotaur not found!"
-            RaidStatusDisplay.Text = "🏛️ Status: Minotaur not found! ❌"
-            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
-        end
-    end)
-end)
-
-CreateButton(RaidPage, "🔄 Refresh Info", 276, function()
-    task.spawn(function()
-        local boss = findMinotaurBoss()
-        if boss then
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("HumanoidRootPart") then
-                local dist = math.floor((char.HumanoidRootPart.Position - boss.rootPart.Position).Magnitude)
-                local hp = math.floor((boss.humanoid.Health / boss.humanoid.MaxHealth) * 100)
-                BossHealth.Text = "👹 Boss: Minotaur | HP: " .. hp .. "%"
-                BossDistance.Text = "📏 Distance: " .. dist .. "m"
-            end
-            RaidStatusDisplay.Text = "🏛️ Status: Minotaur found!"
-            RaidStatusDisplay.TextColor3 = Color3.fromRGB(100, 255, 100)
-        else
-            BossHealth.Text = "👹 Boss: Not found"
-            BossDistance.Text = "📏 Distance: N/A"
-            RaidStatusDisplay.Text = "🏛️ Status: Minotaur not found"
-            RaidStatusDisplay.TextColor3 = Color3.fromRGB(255, 100, 100)
-        end
-        
-        local lever = findLever()
-        if lever then
-            LeverStatus.Text = "🔧 Lever: Found ✅"
-            LeverStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
-        else
-            LeverStatus.Text = "🔧 Lever: Not found"
-            LeverStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
-        end
-    end)
-end)
 
 -- =============================================
 -- PLAYER TAB
@@ -992,8 +655,8 @@ local function showText()
     Settings.Minimized = true
 end
 
-MinBtn.MouseButton1Click:Connect(showText)
-MinimizeText.MouseButton1Click:Connect(showMain)
+MinBtn.Activated:Connect(showText)
+MinimizeText.Activated:Connect(showMain)
 
 -- Text button: tap to restore, drag to move
 local textDragging = false
@@ -1231,4 +894,4 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | Minotaur Raid | Hold E Lever | PC + Mobile | Auto Bounty")
+print("✅ Sailor Piece GUI Loaded! | Text Minimize | PC + Mobile | Auto Bounty")
