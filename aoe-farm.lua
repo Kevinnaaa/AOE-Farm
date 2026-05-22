@@ -2,7 +2,7 @@
     Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO TEXT)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
     Permanent Stats | FPS/Ping/Time on Title Bar | Auto Bounty Display
-    PC + Mobile Support | FIXED TOGGLES
+    PC + Mobile Support | FIXED TOGGLES | MASTERY KEY SEQUENCE
 --]]
 
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
@@ -31,10 +31,20 @@ local PERMANENT = {
 local Settings = {
     Farming = false,
     AntiAFK = true,
-    Minimized = false
+    Minimized = false,
+    MasterySequence = false  -- New mastery sequence toggle
 }
 
 local ScriptActive = true
+local MasteryLoopRunning = false
+
+-- Key Sequence Settings
+local MasterySequenceKeys = {
+    {key = Enum.KeyCode.Three, delay = 2},
+    {key = Enum.KeyCode.C, delay = 0.5},
+    {key = Enum.KeyCode.Two, delay = 4}  -- 4s delay after 2 before next loop
+}
+local MasteryInitialDelay = 4
 
 -- FPS Tracking
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
@@ -56,6 +66,28 @@ if getgenv().SailorPieceLoaded then
     end
 end
 getgenv().SailorPieceLoaded = true
+
+-- =============================================
+-- KEY PRESS FUNCTIONS FOR MASTERY
+-- =============================================
+local function pressKey(keyCode)
+    pcall(function()
+        VirtualInputManager:SendKeyEvent(true, keyCode, false, nil)
+        task.wait(0.05)
+        VirtualInputManager:SendKeyEvent(false, keyCode, false, nil)
+    end)
+end
+
+local function runMasterySequence()
+    if not Settings.MasterySequence then return end
+    for _, step in ipairs(MasterySequenceKeys) do
+        if not Settings.MasterySequence then return end
+        pressKey(step.key)
+        if step.delay > 0 then
+            task.wait(step.delay)
+        end
+    end
+end
 
 -- =============================================
 -- BOUNTY SCANNER
@@ -120,17 +152,17 @@ GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Adjust size for mobile
 local mainWidth = 500
-local mainHeight = 320
+local mainHeight = 400  -- Increased height for new tab
 if isMobile then
     mainWidth = 380
-    mainHeight = 240
+    mainHeight = 320
 end
 
 -- Main Container
 local Main = Instance.new("Frame")
 Main.Name = "MainFrame"
 Main.Size = UDim2.new(0, mainWidth, 0, mainHeight)
-Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -160)
+Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -200)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -483,8 +515,9 @@ end
 -- CREATE TABS
 -- =============================================
 local FarmPage = CreateTab("Farm", "⚔️", 1)
-local PlayerPage = CreateTab("Player", "👤", 2)
-local SettingsPage = CreateTab("Settings", "⚙️", 3)
+local MasteryPage = CreateTab("Mastery", "🔑", 2)
+local PlayerPage = CreateTab("Player", "👤", 3)
+local SettingsPage = CreateTab("Settings", "⚙️", 4)
 
 -- =============================================
 -- FARM TAB
@@ -540,6 +573,94 @@ NPCCount.TextXAlignment = Enum.TextXAlignment.Left
 NPCCount.Font = Enum.Font.Gotham
 NPCCount.TextSize = 9
 NPCCount.Parent = FarmPage
+
+-- =============================================
+-- MASTERY TAB (KEY SEQUENCE)
+-- =============================================
+CreateSection(MasteryPage, "KEY SEQUENCE", 10)
+
+local MasteryStatus = Instance.new("TextLabel")
+MasteryStatus.Size = UDim2.new(1, -30, 0, 16)
+MasteryStatus.Position = UDim2.new(0, 15, 0, isMobile and 36 or 34)
+MasteryStatus.BackgroundTransparency = 1
+MasteryStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+MasteryStatus.Text = "● Idle"
+MasteryStatus.TextXAlignment = Enum.TextXAlignment.Left
+MasteryStatus.Font = Enum.Font.Gotham
+MasteryStatus.TextSize = 10
+MasteryStatus.Parent = MasteryPage
+
+-- Mastery Toggle
+CreateToggle(MasteryPage, "Mastery Key Sequence", false, isMobile and 58 or 54, function(state)
+    Settings.MasterySequence = state
+    
+    if state then
+        MasteryStatus.Text = "● Waiting " .. MasteryInitialDelay .. "s..."
+        MasteryStatus.TextColor3 = Color3.fromRGB(255, 200, 0)
+        
+        -- Start mastery sequence loop
+        task.spawn(function()
+            MasteryLoopRunning = true
+            task.wait(MasteryInitialDelay)
+            
+            if not Settings.MasterySequence then
+                MasteryLoopRunning = false
+                return
+            end
+            
+            MasteryStatus.Text = "● Running Sequence: 3 → 2s → C → 0.5s → 2 → 4s"
+            MasteryStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+            
+            while Settings.MasterySequence and ScriptActive do
+                runMasterySequence()
+                if not Settings.MasterySequence then break end
+                task.wait(0.3)
+            end
+            
+            MasteryLoopRunning = false
+        end)
+    else
+        MasteryStatus.Text = "● Idle"
+        MasteryStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+        MasteryLoopRunning = false
+    end
+end)
+
+CreateSection(MasteryPage, "SEQUENCE INFO", isMobile and 110 or 100)
+
+local SequenceInfo = Instance.new("Frame")
+SequenceInfo.Size = UDim2.new(1, -30, 0, isMobile and 100 or 80)
+SequenceInfo.Position = UDim2.new(0, 15, 0, isMobile and 140 or 124)
+SequenceInfo.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+SequenceInfo.BorderSizePixel = 0
+SequenceInfo.Parent = MasteryPage
+
+local SequenceInfoCorner = Instance.new("UICorner")
+SequenceInfoCorner.CornerRadius = UDim.new(0, 4)
+SequenceInfoCorner.Parent = SequenceInfo
+
+local SequenceTitle = Instance.new("TextLabel")
+SequenceTitle.Size = UDim2.new(1, -20, 0, 16)
+SequenceTitle.Position = UDim2.new(0, 10, 0, 5)
+SequenceTitle.BackgroundTransparency = 1
+SequenceTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
+SequenceTitle.Text = "⚡ SEQUENCE FLOW"
+SequenceTitle.TextXAlignment = Enum.TextXAlignment.Left
+SequenceTitle.Font = Enum.Font.GothamBold
+SequenceTitle.TextSize = isMobile and 9 or 10
+SequenceTitle.Parent = SequenceInfo
+
+local SequenceSteps = Instance.new("TextLabel")
+SequenceSteps.Size = UDim2.new(1, -20, 0, 50)
+SequenceSteps.Position = UDim2.new(0, 10, 0, 22)
+SequenceSteps.BackgroundTransparency = 1
+SequenceSteps.TextColor3 = Color3.fromRGB(180, 180, 180)
+SequenceSteps.Text = "Wait 4s → Press 3\nWait 2s → Press C\nWait 0.5s → Press 2\n(Loops with 4s delay after 2)"
+SequenceSteps.TextXAlignment = Enum.TextXAlignment.Left
+SequenceSteps.TextYAlignment = Enum.TextYAlignment.Top
+SequenceSteps.Font = Enum.Font.Gotham
+SequenceSteps.TextSize = isMobile and 9 or 10
+SequenceSteps.Parent = SequenceInfo
 
 -- =============================================
 -- PLAYER TAB
@@ -637,6 +758,7 @@ CreateSection(SettingsPage, "TERMINATE", 126)
 CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 150, function()
     ScriptActive = false
     Settings.Farming = false
+    Settings.MasterySequence = false
     GUI:Destroy()
 end)
 
@@ -894,4 +1016,5 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | Text Minimize | PC + Mobile | Auto Bounty")
+print("✅ Sailor Piece GUI Loaded! | Text Minimize | PC + Mobile | Auto Bounty | Mastery Key Sequence Added")
+print("   Mastery Sequence: 3 → 2s → C → 0.5s → 2 → 4s → (repeat)")
