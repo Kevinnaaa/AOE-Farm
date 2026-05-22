@@ -40,11 +40,11 @@ local MasteryLoopRunning = false
 
 -- Key Sequence Settings
 local MasterySequenceKeys = {
-    {key = Enum.KeyCode.Three, delay = 2},
+    {key = Enum.KeyCode.Three, delay = 3},
     {key = Enum.KeyCode.C, delay = 0.5},
-    {key = Enum.KeyCode.Two, delay = 4}  -- 4s delay after 2 before next loop
+    {key = Enum.KeyCode.Two, delay = 5}  -- 4s delay after 2 before next loop
 }
-local MasteryInitialDelay = 4
+local MasteryInitialDelay = 5
 
 -- FPS Tracking
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
