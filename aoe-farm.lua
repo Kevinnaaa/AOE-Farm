@@ -38,13 +38,13 @@ local Settings = {
 local ScriptActive = true
 local MasteryLoopRunning = false
 
--- Key Sequence Settings
+-- Key Sequence Settings (REVISED: 3 → 5s → C → 0.5s → 2)
 local MasterySequenceKeys = {
-    {key = Enum.KeyCode.Three, delay = 3},
+    {key = Enum.KeyCode.Three, delay = 5},  -- Changed from 2 to 5 seconds
     {key = Enum.KeyCode.C, delay = 0.5},
-    {key = Enum.KeyCode.Two, delay = 5}  -- 4s delay after 2 before next loop
+    {key = Enum.KeyCode.Two, delay = 4}  -- 4s delay after 2 before next loop
 }
-local MasteryInitialDelay = 5
+local MasteryInitialDelay = 4
 
 -- FPS Tracking
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
@@ -575,7 +575,7 @@ NPCCount.TextSize = 9
 NPCCount.Parent = FarmPage
 
 -- =============================================
--- MASTERY TAB (KEY SEQUENCE)
+-- MASTERY TAB (KEY SEQUENCE) - REVISED VERSION
 -- =============================================
 CreateSection(MasteryPage, "KEY SEQUENCE", 10)
 
@@ -608,7 +608,7 @@ CreateToggle(MasteryPage, "Mastery Key Sequence", false, isMobile and 58 or 54, 
                 return
             end
             
-            MasteryStatus.Text = "● Running Sequence: 3 → 2s → C → 0.5s → 2 → 4s"
+            MasteryStatus.Text = "● Running: 3 → 5s → C → 0.5s → 2 → 4s"
             MasteryStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
             
             while Settings.MasterySequence and ScriptActive do
@@ -644,7 +644,7 @@ SequenceTitle.Size = UDim2.new(1, -20, 0, 16)
 SequenceTitle.Position = UDim2.new(0, 10, 0, 5)
 SequenceTitle.BackgroundTransparency = 1
 SequenceTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
-SequenceTitle.Text = "⚡ SEQUENCE FLOW"
+SequenceTitle.Text = "⚡ SEQUENCE FLOW (REVISED)"
 SequenceTitle.TextXAlignment = Enum.TextXAlignment.Left
 SequenceTitle.Font = Enum.Font.GothamBold
 SequenceTitle.TextSize = isMobile and 9 or 10
@@ -655,7 +655,7 @@ SequenceSteps.Size = UDim2.new(1, -20, 0, 50)
 SequenceSteps.Position = UDim2.new(0, 10, 0, 22)
 SequenceSteps.BackgroundTransparency = 1
 SequenceSteps.TextColor3 = Color3.fromRGB(180, 180, 180)
-SequenceSteps.Text = "Wait 4s → Press 3\nWait 2s → Press C\nWait 0.5s → Press 2\n(Loops with 4s delay after 2)"
+SequenceSteps.Text = "Wait 4s → Press 3\nWait 5s → Press C\nWait 0.5s → Press 2\n(Loops with 4s delay after 2)"
 SequenceSteps.TextXAlignment = Enum.TextXAlignment.Left
 SequenceSteps.TextYAlignment = Enum.TextYAlignment.Top
 SequenceSteps.Font = Enum.Font.Gotham
@@ -1016,5 +1016,5 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | Text Minimize | PC + Mobile | Auto Bounty | Mastery Key Sequence Added")
-print("   Mastery Sequence: 3 → 2s → C → 0.5s → 2 → 4s → (repeat)")
+print("✅ Sailor Piece GUI Loaded! | Text Minimize | PC + Mobile | Auto Bounty | Mastery Key Sequence (REVISED)")
+print("   Mastery Sequence: 3 → 5s → C → 0.5s → 2 → 4s → (repeat)")
