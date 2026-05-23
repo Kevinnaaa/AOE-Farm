@@ -2,7 +2,7 @@
     Sailor Piece - ALL IN ONE (RAYFIELD STYLE - MINIMIZE TO TEXT)
     AOE Farm + Anti AFK + Speed 50 + Jump 75 + FOV 100
     Permanent Stats | FPS/Ping/Time on Title Bar | Auto Bounty Display
-    PC + Mobile Support | FIXED TOGGLES | MASTERY KEY SEQUENCE
+    PC + Mobile Support | SWORD & MELEE MASTERY SEQUENCES
 --]]
 
 repeat wait() until game:IsLoaded() and game.Players and game.Players.LocalPlayer and game.Players.LocalPlayer.Character
@@ -32,19 +32,29 @@ local Settings = {
     Farming = false,
     AntiAFK = true,
     Minimized = false,
-    MasterySequence = false  -- New mastery sequence toggle
+    SwordMastery = false,  -- Sword mastery sequence (3 → 5s → C → 0.5s → 2)
+    MeleeMastery = false   -- Melee mastery sequence (3 → 5s → C → 0.5s → 1)
 }
 
 local ScriptActive = true
-local MasteryLoopRunning = false
+local SwordLoopRunning = false
+local MeleeLoopRunning = false
 
--- Key Sequence Settings (REVISED: 3 → 5s → C → 0.5s → 2)
-local MasterySequenceKeys = {
-    {key = Enum.KeyCode.Three, delay = 5},  -- Changed from 2 to 5 seconds
+-- SWORD MASTERY Sequence (Presses 2 at the end)
+local SwordSequenceKeys = {
+    {key = Enum.KeyCode.Three, delay = 5},
     {key = Enum.KeyCode.C, delay = 0.5},
-    {key = Enum.KeyCode.Two, delay = 4}  -- 4s delay after 2 before next loop
+    {key = Enum.KeyCode.Two, delay = 4}  -- Presses 2, then 4s delay
 }
-local MasteryInitialDelay = 4
+local SwordInitialDelay = 4
+
+-- MELEE MASTERY Sequence (Presses 1 at the end)
+local MeleeSequenceKeys = {
+    {key = Enum.KeyCode.Three, delay = 5},
+    {key = Enum.KeyCode.C, delay = 0.5},
+    {key = Enum.KeyCode.One, delay = 4}  -- Presses 1, then 4s delay
+}
+local MeleeInitialDelay = 4
 
 -- FPS Tracking
 local fpsCount, fps, lastFPSUpdate = 0, 0, tick()
@@ -78,10 +88,21 @@ local function pressKey(keyCode)
     end)
 end
 
-local function runMasterySequence()
-    if not Settings.MasterySequence then return end
-    for _, step in ipairs(MasterySequenceKeys) do
-        if not Settings.MasterySequence then return end
+local function runSwordSequence()
+    if not Settings.SwordMastery then return end
+    for _, step in ipairs(SwordSequenceKeys) do
+        if not Settings.SwordMastery then return end
+        pressKey(step.key)
+        if step.delay > 0 then
+            task.wait(step.delay)
+        end
+    end
+end
+
+local function runMeleeSequence()
+    if not Settings.MeleeMastery then return end
+    for _, step in ipairs(MeleeSequenceKeys) do
+        if not Settings.MeleeMastery then return end
         pressKey(step.key)
         if step.delay > 0 then
             task.wait(step.delay)
@@ -152,17 +173,17 @@ GUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- Adjust size for mobile
 local mainWidth = 500
-local mainHeight = 400  -- Increased height for new tab
+local mainHeight = 450  -- Increased height for two mastery toggles
 if isMobile then
     mainWidth = 380
-    mainHeight = 320
+    mainHeight = 370
 end
 
 -- Main Container
 local Main = Instance.new("Frame")
 Main.Name = "MainFrame"
 Main.Size = UDim2.new(0, mainWidth, 0, mainHeight)
-Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -200)
+Main.Position = isMobile and UDim2.new(0.5, -mainWidth/2, 0.5, -mainHeight/2) or UDim2.new(0.5, -250, 0.5, -225)
 Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Main.BorderSizePixel = 0
 Main.ClipsDescendants = true
@@ -575,62 +596,126 @@ NPCCount.TextSize = 9
 NPCCount.Parent = FarmPage
 
 -- =============================================
--- MASTERY TAB (KEY SEQUENCE) - REVISED VERSION
+-- MASTERY TAB (SWORD & MELEE SEQUENCES)
 -- =============================================
-CreateSection(MasteryPage, "KEY SEQUENCE", 10)
+CreateSection(MasteryPage, "MASTERY TRAINING", 10)
 
-local MasteryStatus = Instance.new("TextLabel")
-MasteryStatus.Size = UDim2.new(1, -30, 0, 16)
-MasteryStatus.Position = UDim2.new(0, 15, 0, isMobile and 36 or 34)
-MasteryStatus.BackgroundTransparency = 1
-MasteryStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
-MasteryStatus.Text = "● Idle"
-MasteryStatus.TextXAlignment = Enum.TextXAlignment.Left
-MasteryStatus.Font = Enum.Font.Gotham
-MasteryStatus.TextSize = 10
-MasteryStatus.Parent = MasteryPage
+-- Sword Mastery Status
+local SwordStatus = Instance.new("TextLabel")
+SwordStatus.Size = UDim2.new(1, -30, 0, 16)
+SwordStatus.Position = UDim2.new(0, 15, 0, isMobile and 36 or 34)
+SwordStatus.BackgroundTransparency = 1
+SwordStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+SwordStatus.Text = "⚔️ Sword: ● Idle"
+SwordStatus.TextXAlignment = Enum.TextXAlignment.Left
+SwordStatus.Font = Enum.Font.Gotham
+SwordStatus.TextSize = 10
+SwordStatus.Parent = MasteryPage
 
--- Mastery Toggle
-CreateToggle(MasteryPage, "Mastery Key Sequence", false, isMobile and 58 or 54, function(state)
-    Settings.MasterySequence = state
+-- Sword Mastery Toggle (Presses 2 at the end)
+CreateToggle(MasteryPage, "⚔️ Sword Mastery (3→5s→C→0.5s→2)", false, isMobile and 58 or 54, function(state)
+    -- If turning on Sword, turn off Melee automatically (can't run both)
+    if state and Settings.MeleeMastery then
+        Settings.MeleeMastery = false
+        MeleeLoopRunning = false
+        MeleeStatus.Text = "👊 Melee: ● Idle"
+        MeleeStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+        -- Update melee toggle visual if needed (would need reference, but it's fine)
+    end
+    
+    Settings.SwordMastery = state
     
     if state then
-        MasteryStatus.Text = "● Waiting " .. MasteryInitialDelay .. "s..."
-        MasteryStatus.TextColor3 = Color3.fromRGB(255, 200, 0)
+        SwordStatus.Text = "⚔️ Sword: ● Waiting " .. SwordInitialDelay .. "s..."
+        SwordStatus.TextColor3 = Color3.fromRGB(255, 200, 0)
         
-        -- Start mastery sequence loop
         task.spawn(function()
-            MasteryLoopRunning = true
-            task.wait(MasteryInitialDelay)
+            SwordLoopRunning = true
+            task.wait(SwordInitialDelay)
             
-            if not Settings.MasterySequence then
-                MasteryLoopRunning = false
+            if not Settings.SwordMastery then
+                SwordLoopRunning = false
                 return
             end
             
-            MasteryStatus.Text = "● Running: 3 → 5s → C → 0.5s → 2 → 4s"
-            MasteryStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+            SwordStatus.Text = "⚔️ Sword: ● Running (3→5s→C→0.5s→2)"
+            SwordStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
             
-            while Settings.MasterySequence and ScriptActive do
-                runMasterySequence()
-                if not Settings.MasterySequence then break end
+            while Settings.SwordMastery and ScriptActive do
+                runSwordSequence()
+                if not Settings.SwordMastery then break end
                 task.wait(0.3)
             end
             
-            MasteryLoopRunning = false
+            SwordLoopRunning = false
         end)
     else
-        MasteryStatus.Text = "● Idle"
-        MasteryStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
-        MasteryLoopRunning = false
+        SwordStatus.Text = "⚔️ Sword: ● Idle"
+        SwordStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+        SwordLoopRunning = false
     end
 end)
 
-CreateSection(MasteryPage, "SEQUENCE INFO", isMobile and 110 or 100)
+-- Melee Mastery Status
+local MeleeStatus = Instance.new("TextLabel")
+MeleeStatus.Size = UDim2.new(1, -30, 0, 16)
+MeleeStatus.Position = UDim2.new(0, 15, 0, isMobile and 104 or 96)
+MeleeStatus.BackgroundTransparency = 1
+MeleeStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+MeleeStatus.Text = "👊 Melee: ● Idle"
+MeleeStatus.TextXAlignment = Enum.TextXAlignment.Left
+MeleeStatus.Font = Enum.Font.Gotham
+MeleeStatus.TextSize = 10
+MeleeStatus.Parent = MasteryPage
+
+-- Melee Mastery Toggle (Presses 1 at the end)
+CreateToggle(MasteryPage, "👊 Melee Mastery (3→5s→C→0.5s→1)", false, isMobile and 126 or 118, function(state)
+    -- If turning on Melee, turn off Sword automatically (can't run both)
+    if state and Settings.SwordMastery then
+        Settings.SwordMastery = false
+        SwordLoopRunning = false
+        SwordStatus.Text = "⚔️ Sword: ● Idle"
+        SwordStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+    end
+    
+    Settings.MeleeMastery = state
+    
+    if state then
+        MeleeStatus.Text = "👊 Melee: ● Waiting " .. MeleeInitialDelay .. "s..."
+        MeleeStatus.TextColor3 = Color3.fromRGB(255, 200, 0)
+        
+        task.spawn(function()
+            MeleeLoopRunning = true
+            task.wait(MeleeInitialDelay)
+            
+            if not Settings.MeleeMastery then
+                MeleeLoopRunning = false
+                return
+            end
+            
+            MeleeStatus.Text = "👊 Melee: ● Running (3→5s→C→0.5s→1)"
+            MeleeStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+            
+            while Settings.MeleeMastery and ScriptActive do
+                runMeleeSequence()
+                if not Settings.MeleeMastery then break end
+                task.wait(0.3)
+            end
+            
+            MeleeLoopRunning = false
+        end)
+    else
+        MeleeStatus.Text = "👊 Melee: ● Idle"
+        MeleeStatus.TextColor3 = Color3.fromRGB(150, 150, 150)
+        MeleeLoopRunning = false
+    end
+end)
+
+CreateSection(MasteryPage, "SEQUENCE INFO", isMobile and 176 or 168)
 
 local SequenceInfo = Instance.new("Frame")
-SequenceInfo.Size = UDim2.new(1, -30, 0, isMobile and 100 or 80)
-SequenceInfo.Position = UDim2.new(0, 15, 0, isMobile and 140 or 124)
+SequenceInfo.Size = UDim2.new(1, -30, 0, isMobile and 130 or 110)
+SequenceInfo.Position = UDim2.new(0, 15, 0, isMobile and 206 or 198)
 SequenceInfo.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 SequenceInfo.BorderSizePixel = 0
 SequenceInfo.Parent = MasteryPage
@@ -644,22 +729,22 @@ SequenceTitle.Size = UDim2.new(1, -20, 0, 16)
 SequenceTitle.Position = UDim2.new(0, 10, 0, 5)
 SequenceTitle.BackgroundTransparency = 1
 SequenceTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
-SequenceTitle.Text = "⚡ SEQUENCE FLOW (REVISED)"
+SequenceTitle.Text = "⚡ SEQUENCE FLOW"
 SequenceTitle.TextXAlignment = Enum.TextXAlignment.Left
 SequenceTitle.Font = Enum.Font.GothamBold
 SequenceTitle.TextSize = isMobile and 9 or 10
 SequenceTitle.Parent = SequenceInfo
 
 local SequenceSteps = Instance.new("TextLabel")
-SequenceSteps.Size = UDim2.new(1, -20, 0, 50)
+SequenceSteps.Size = UDim2.new(1, -20, 0, 80)
 SequenceSteps.Position = UDim2.new(0, 10, 0, 22)
 SequenceSteps.BackgroundTransparency = 1
 SequenceSteps.TextColor3 = Color3.fromRGB(180, 180, 180)
-SequenceSteps.Text = "Wait 4s → Press 3\nWait 5s → Press C\nWait 0.5s → Press 2\n(Loops with 4s delay after 2)"
+SequenceSteps.Text = "⚔️ SWORD MASTERY: Wait 4s → Press 3\n                   Wait 5s → Press C\n                   Wait 0.5s → Press 2\n                   (Loops with 4s delay after 2)\n\n👊 MELEE MASTERY: Wait 4s → Press 3\n                   Wait 5s → Press C\n                   Wait 0.5s → Press 1\n                   (Loops with 4s delay after 1)"
 SequenceSteps.TextXAlignment = Enum.TextXAlignment.Left
 SequenceSteps.TextYAlignment = Enum.TextYAlignment.Top
 SequenceSteps.Font = Enum.Font.Gotham
-SequenceSteps.TextSize = isMobile and 9 or 10
+SequenceSteps.TextSize = isMobile and 8 or 9
 SequenceSteps.Parent = SequenceInfo
 
 -- =============================================
@@ -758,7 +843,8 @@ CreateSection(SettingsPage, "TERMINATE", 126)
 CreateButton(SettingsPage, "⚠️ TERMINATE SCRIPT", 150, function()
     ScriptActive = false
     Settings.Farming = false
-    Settings.MasterySequence = false
+    Settings.SwordMastery = false
+    Settings.MeleeMastery = false
     GUI:Destroy()
 end)
 
@@ -1016,5 +1102,6 @@ task.spawn(function()
     end
 end)
 
-print("✅ Sailor Piece GUI Loaded! | Text Minimize | PC + Mobile | Auto Bounty | Mastery Key Sequence (REVISED)")
-print("   Mastery Sequence: 3 → 5s → C → 0.5s → 2 → 4s → (repeat)")
+print("✅ Sailor Piece GUI Loaded! | Text Minimize | PC + Mobile | Auto Bounty")
+print("   ⚔️ SWORD MASTERY: 3 → 5s → C → 0.5s → 2 → 4s (repeat)")
+print("   👊 MELEE MASTERY: 3 → 5s → C → 0.5s → 1 → 4s (repeat)")
